@@ -1,2 +1,33 @@
 //@version=6
-indicator("moment", overlay = true)
+indicator("moment", overlay = true, max_boxes_count = 100, max_lines_count = 120, max_labels_count = 100)
+
+//#include "domain/constants.pine"
+//#include "domain/types.pine"
+//#include "domain/zigzag.pine"
+//#include "application/mtf_pivot_collector.pine"
+//#include "application/liquidity_zone_engine.pine"
+//#include "presentation/settings.pine"
+//#include "presentation/zone_renderer.pine"
+
+var array<PivotEvidence> pivotEvidence = array.new<PivotEvidence>()
+var array<LiquidityZone> liquidityZones = array.new<LiquidityZone>()
+var array<ZoneRenderObjects> zoneRenderObjects = array.new<ZoneRenderObjects>()
+var label statusLabel = na
+
+// 1分足ピボットは1分足でのみ完全な履歴を取得できる。上位チャートでは他の4時間足を維持する。
+bool canCollect1m = timeframe.isminutes and timeframe.multiplier == 1
+bool collect1m = enable1m and canCollect1m
+int chartEvidenceCount = f_collect_chart_pivots(pivotEvidence, atrPeriod, pivotStrength, maxEvidenceCount)
+int mtfEvidenceCount = f_collect_mtf_pivots(pivotEvidence, collect1m, enable15m, enable1h, enable4h, enableDaily, atrPeriod, pivotStrength, maxEvidenceCount)
+int newEvidenceCount = chartEvidenceCount + mtfEvidenceCount
+float commonAtr = request.security(syminfo.tickerid, "15", ta.atr(atrPeriod), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+if newEvidenceCount > 0 and not na(commonAtr)
+	int firstNewEvidenceIndex = math.max(0, array.size(pivotEvidence) - newEvidenceCount)
+	for evidenceIndex = firstNewEvidenceIndex to array.size(pivotEvidence) - 1
+		PivotEvidence evidence = array.get(pivotEvidence, evidenceIndex)
+		f_ingest_evidence(liquidityZones, evidence, commonAtr, clusterToleranceAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr, weight1m, weight15m, weight1h, weight4h, weightDaily, reactionBonus, volumeBonus, decayHours, maxZoneCount)
+if not na(commonAtr)
+	f_update_zone_states(liquidityZones, commonAtr, invalidationBufferAtr, activeZoneMaxAgeHours, invalidatedRetentionHours)
+if barstate.islast
+	int renderedCount = f_render_zones(liquidityZones, zoneRenderObjects, displayedZoneCount, minimumScore, displayOverlapThreshold, supportColor, resistanceColor, neutralColor, showDebugLabels)
+	statusLabel := f_render_status(statusLabel, array.size(pivotEvidence), array.size(liquidityZones), renderedCount, showStatus)

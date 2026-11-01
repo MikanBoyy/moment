@@ -1,0 +1,23 @@
+f_calc_efficiency_ratio(sourceSeries, period) =>
+    float direction = math.abs(sourceSeries - sourceSeries[period])
+    float volatility = ta.sma(math.abs(sourceSeries - sourceSeries[1]), period) * period
+    volatility == 0.0 ? 0.0 : direction / volatility
+
+f_calc_dynamic_threshold_price(atrValue, efficiencyRatio, atrMultiplier) =>
+    float dynamicMultiplier = 1.4 - efficiencyRatio * 0.8
+    math.max(atrValue * atrMultiplier * dynamicMultiplier, syminfo.mintick)
+
+// 確定した極値だけを返す。戻り値は [確定有無、価格、時刻、種別、ATR]。
+f_extract_confirmed_pivot(atrPeriod, pivotStrength) =>
+    float atrValue = ta.atr(atrPeriod)
+    float volumeAverage = ta.sma(volume, 20)
+    float pivotHigh = ta.pivothigh(high, pivotStrength, pivotStrength)
+    float pivotLow = ta.pivotlow(low, pivotStrength, pivotStrength)
+    bool isHighPivot = not na(pivotHigh)
+    bool isLowPivot = not na(pivotLow)
+    bool pivotConfirmed = isHighPivot or isLowPivot
+    float confirmedPrice = isHighPivot ? pivotHigh : pivotLow
+    int confirmedTime = pivotConfirmed ? time[pivotStrength] : na
+    int confirmedSide = isHighPivot ? PIVOT_SIDE_HIGH : isLowPivot ? PIVOT_SIDE_LOW : PIVOT_SIDE_NONE
+    float volumeRatio = pivotConfirmed and not na(volumeAverage[pivotStrength]) and volumeAverage[pivotStrength] > 0 ? volume[pivotStrength] / volumeAverage[pivotStrength] : na
+    [pivotConfirmed, confirmedPrice, confirmedTime, confirmedSide, atrValue, volumeRatio]

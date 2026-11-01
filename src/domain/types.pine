@@ -1,0 +1,20 @@
+type PivotEvidence
+    float price
+    int pivotTime
+    int timeframeId
+    int side
+    float sourceAtr
+    float volumeRatio
+
+type LiquidityZone
+    float topPrice
+    float bottomPrice
+    float centerPrice
+    int role
+    int state
+    int createdTime
+    int invalidatedTime
+    int evidenceCount
+    int timeframeMask
+    float score
+    int lastEvidenceTime

@@ -1,0 +1,101 @@
+type ZoneRenderObjects
+    box zoneBox
+    line centerLine
+    line extendedCenterLine
+    line upperBorder
+    line lowerBorder
+    label debugLabel
+
+f_delete_zone_render_objects(renderObjects) =>
+    if array.size(renderObjects) > 0
+        for objectIndex = 0 to array.size(renderObjects) - 1
+            ZoneRenderObjects renderObjectsAtIndex = array.get(renderObjects, objectIndex)
+            if not na(renderObjectsAtIndex.zoneBox)
+                box.delete(renderObjectsAtIndex.zoneBox)
+            if not na(renderObjectsAtIndex.centerLine)
+                line.delete(renderObjectsAtIndex.centerLine)
+            if not na(renderObjectsAtIndex.extendedCenterLine)
+                line.delete(renderObjectsAtIndex.extendedCenterLine)
+            if not na(renderObjectsAtIndex.upperBorder)
+                line.delete(renderObjectsAtIndex.upperBorder)
+            if not na(renderObjectsAtIndex.lowerBorder)
+                line.delete(renderObjectsAtIndex.lowerBorder)
+            if not na(renderObjectsAtIndex.debugLabel)
+                label.delete(renderObjectsAtIndex.debugLabel)
+    array.clear(renderObjects)
+
+f_find_highest_unselected_zone(zones, selected, minimumScore) =>
+    int selectedIndex = na
+    float highestScore = na
+    if array.size(zones) > 0
+        for zoneIndex = 0 to array.size(zones) - 1
+            LiquidityZone zone = array.get(zones, zoneIndex)
+            bool isEligible = not array.get(selected, zoneIndex) and zone.score >= minimumScore and not na(time[1]) and zone.createdTime < time[1]
+            if isEligible and (na(highestScore) or zone.score > highestScore)
+                selectedIndex := zoneIndex
+                highestScore := zone.score
+    selectedIndex
+
+f_get_zone_color(zone, supportColor, resistanceColor, neutralColor) =>
+    color zoneColor = neutralColor
+    if zone.role == ZONE_ROLE_SUPPORT
+        zoneColor := supportColor
+    else if zone.role == ZONE_ROLE_RESISTANCE
+        zoneColor := resistanceColor
+    zoneColor
+
+f_has_display_overlap(candidateZone, renderedZoneIndices, zones, overlapThreshold) =>
+    bool hasOverlap = false
+    if overlapThreshold > 0 and array.size(renderedZoneIndices) > 0
+        for renderedIndex = 0 to array.size(renderedZoneIndices) - 1
+            int renderedZoneIndex = array.get(renderedZoneIndices, renderedIndex)
+            LiquidityZone renderedZone = array.get(zones, renderedZoneIndex)
+            float overlapTop = math.min(candidateZone.topPrice, renderedZone.topPrice)
+            float overlapBottom = math.max(candidateZone.bottomPrice, renderedZone.bottomPrice)
+            float overlapWidth = math.max(0.0, overlapTop - overlapBottom)
+            float narrowerWidth = math.max(syminfo.mintick, math.min(candidateZone.topPrice - candidateZone.bottomPrice, renderedZone.topPrice - renderedZone.bottomPrice))
+            bool exceedsThreshold = overlapWidth / narrowerWidth >= overlapThreshold
+            if exceedsThreshold
+                hasOverlap := true
+    hasOverlap
+
+f_render_zones(zones, renderObjects, displayedZoneCount, minimumScore, overlapThreshold, supportColor, resistanceColor, neutralColor, showDebugLabels) =>
+    f_delete_zone_render_objects(renderObjects)
+    array<bool> selected = array.new_bool(array.size(zones), false)
+    array<int> renderedZoneIndices = array.new_int()
+    int renderedCount = 0
+    while renderedCount < displayedZoneCount
+        int zoneIndex = f_find_highest_unselected_zone(zones, selected, minimumScore)
+        if na(zoneIndex)
+            break
+
+        array.set(selected, zoneIndex, true)
+        LiquidityZone zone = array.get(zones, zoneIndex)
+        bool overlapsHigherScoreZone = f_has_display_overlap(zone, renderedZoneIndices, zones, overlapThreshold)
+        if not overlapsHigherScoreZone
+            color baseColor = f_get_zone_color(zone, supportColor, resistanceColor, neutralColor)
+            bool isInvalidated = zone.state == ZONE_STATE_INVALIDATED
+            int fillAlpha = isInvalidated ? 84 : 72
+            int borderAlpha = isInvalidated ? 45 : 0
+            box zoneBox = box.new(zone.createdTime, zone.topPrice, time, zone.bottomPrice, xloc = xloc.bar_time, bgcolor = color.new(baseColor, fillAlpha), border_color = na)
+            line upperBorder = line.new(zone.createdTime, zone.topPrice, time, zone.topPrice, xloc = xloc.bar_time, color = color.new(baseColor, borderAlpha), style = isInvalidated ? line.style_dotted : line.style_solid)
+            line lowerBorder = line.new(zone.createdTime, zone.bottomPrice, time, zone.bottomPrice, xloc = xloc.bar_time, color = color.new(baseColor, borderAlpha), style = isInvalidated ? line.style_dotted : line.style_solid)
+            line centerLine = line.new(zone.createdTime, zone.centerPrice, time[1], zone.centerPrice, xloc = xloc.bar_time, color = color.new(baseColor, isInvalidated ? 45 : 0), style = isInvalidated ? line.style_dotted : line.style_solid, width = isInvalidated ? 2 : 3)
+            line extendedCenterLine = line.new(bar_index - 1, zone.centerPrice, bar_index, zone.centerPrice, xloc = xloc.bar_index, extend = extend.right, color = color.new(baseColor, isInvalidated ? 45 : 0), style = isInvalidated ? line.style_dotted : line.style_solid, width = isInvalidated ? 2 : 3)
+            label debugLabel = na
+            if showDebugLabels
+                string labelText = str.tostring(zone.score, "#.0") + " | " + str.tostring(zone.evidenceCount)
+                debugLabel := label.new(time, zone.centerPrice, labelText, xloc = xloc.bar_time, style = label.style_label_left, color = color.new(baseColor, 20), textcolor = color.white, size = size.tiny)
+            array.push(renderObjects, ZoneRenderObjects.new(zoneBox, centerLine, extendedCenterLine, upperBorder, lowerBorder, debugLabel))
+            array.push(renderedZoneIndices, zoneIndex)
+            renderedCount := renderedCount + 1
+    renderedCount
+
+f_render_status(statusLabel, pivotCount, zoneCount, renderedCount, showStatus) =>
+    if not na(statusLabel)
+        label.delete(statusLabel)
+    label nextStatusLabel = na
+    if showStatus
+        string statusText = "Pivot: " + str.tostring(pivotCount) + "  Zone: " + str.tostring(zoneCount) + "  Render: " + str.tostring(renderedCount)
+        nextStatusLabel := label.new(bar_index, high, statusText, style = label.style_label_down, color = color.new(color.black, 20), textcolor = color.white, size = size.small)
+    nextStatusLabel

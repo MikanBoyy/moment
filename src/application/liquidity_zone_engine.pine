@@ -1,0 +1,149 @@
+f_get_timeframe_weight(timeframeId, weight1m, weight15m, weight1h, weight4h, weightDaily) =>
+    float weight = weight1m
+    if timeframeId == TIMEFRAME_ID_15M
+        weight := weight15m
+    else if timeframeId == TIMEFRAME_ID_1H
+        weight := weight1h
+    else if timeframeId == TIMEFRAME_ID_4H
+        weight := weight4h
+    else if timeframeId == TIMEFRAME_ID_D
+        weight := weightDaily
+    weight
+
+f_get_timeframe_mask(timeframeId) =>
+    int mask = 1
+    if timeframeId == TIMEFRAME_ID_15M
+        mask := 2
+    else if timeframeId == TIMEFRAME_ID_1H
+        mask := 4
+    else if timeframeId == TIMEFRAME_ID_4H
+        mask := 8
+    else if timeframeId == TIMEFRAME_ID_D
+        mask := 16
+    mask
+
+f_merge_timeframe_mask(existingMask, incomingMask) =>
+    bool alreadyIncluded = existingMask % (incomingMask * 2) >= incomingMask
+    alreadyIncluded ? existingMask : existingMask + incomingMask
+
+f_find_matching_zone(zones, pivotPrice, clusterTolerancePrice, adjacentMergeDistancePrice) =>
+    int matchedIndex = na
+    if array.size(zones) > 0
+        for zoneIndex = 0 to array.size(zones) - 1
+            LiquidityZone zone = array.get(zones, zoneIndex)
+            float distanceToZone = pivotPrice > zone.topPrice ? pivotPrice - zone.topPrice : pivotPrice < zone.bottomPrice ? zone.bottomPrice - pivotPrice : 0.0
+            bool isNearCenter = math.abs(pivotPrice - zone.centerPrice) <= clusterTolerancePrice
+            bool isNearBoundary = adjacentMergeDistancePrice > 0 and distanceToZone <= adjacentMergeDistancePrice
+            bool isNearZone = zone.state == ZONE_STATE_ACTIVE and (isNearCenter or isNearBoundary)
+            if na(matchedIndex) and isNearZone
+                matchedIndex := zoneIndex
+    matchedIndex
+
+f_trim_lowest_scoring_zone(zones, maxZoneCount) =>
+    if array.size(zones) > maxZoneCount
+        int lowestIndex = 0
+        float lowestScore = array.get(zones, 0).score
+        for zoneIndex = 1 to array.size(zones) - 1
+            LiquidityZone zone = array.get(zones, zoneIndex)
+            if zone.score < lowestScore
+                lowestScore := zone.score
+                lowestIndex := zoneIndex
+        array.remove(zones, lowestIndex)
+
+f_merge_adjacent_active_zones(zones, commonAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr) =>
+    bool mergedAnyZone = true
+    while mergedAnyZone and array.size(zones) > 1
+        mergedAnyZone := false
+        int firstIndex = 0
+        while firstIndex < array.size(zones) - 1 and not mergedAnyZone
+            LiquidityZone firstZone = array.get(zones, firstIndex)
+            int secondIndex = firstIndex + 1
+            while secondIndex < array.size(zones) and not mergedAnyZone
+                LiquidityZone secondZone = array.get(zones, secondIndex)
+                float gapBetweenZones = math.max(0.0, math.max(firstZone.bottomPrice, secondZone.bottomPrice) - math.min(firstZone.topPrice, secondZone.topPrice))
+                bool shouldMerge = firstZone.state == ZONE_STATE_ACTIVE and secondZone.state == ZONE_STATE_ACTIVE and gapBetweenZones <= commonAtr * adjacentMergeDistanceAtr
+                if shouldMerge
+                    float mergedTop = math.max(firstZone.topPrice, secondZone.topPrice)
+                    float mergedBottom = math.min(firstZone.bottomPrice, secondZone.bottomPrice)
+                    float mergedCenter = (mergedTop + mergedBottom) / 2.0
+                    float maximumWidth = commonAtr * maximumZoneWidthAtr
+                    float minimumWidth = commonAtr * minimumZoneWidthAtr
+                    float mergedWidth = mergedTop - mergedBottom
+                    if mergedWidth > maximumWidth
+                        mergedTop := mergedCenter + maximumWidth / 2.0
+                        mergedBottom := mergedCenter - maximumWidth / 2.0
+                    else if mergedWidth < minimumWidth
+                        mergedTop := mergedCenter + minimumWidth / 2.0
+                        mergedBottom := mergedCenter - minimumWidth / 2.0
+                    int mergedRole = firstZone.role == secondZone.role ? firstZone.role : ZONE_ROLE_NEUTRAL
+                    int mergedCreatedTime = math.min(firstZone.createdTime, secondZone.createdTime)
+                    int mergedLastEvidenceTime = math.max(firstZone.lastEvidenceTime, secondZone.lastEvidenceTime)
+                    int mergedMask = f_merge_timeframe_mask(firstZone.timeframeMask, secondZone.timeframeMask)
+                    LiquidityZone mergedZone = LiquidityZone.new(mergedTop, mergedBottom, (mergedTop + mergedBottom) / 2.0, mergedRole, ZONE_STATE_ACTIVE, mergedCreatedTime, na, firstZone.evidenceCount + secondZone.evidenceCount, mergedMask, firstZone.score + secondZone.score, mergedLastEvidenceTime)
+                    array.set(zones, firstIndex, mergedZone)
+                    array.remove(zones, secondIndex)
+                    mergedAnyZone := true
+                secondIndex := secondIndex + 1
+            firstIndex := firstIndex + 1
+
+f_ingest_evidence(zones, evidence, commonAtr, clusterToleranceAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr, weight1m, weight15m, weight1h, weight4h, weightDaily, reactionBonus, volumeBonus, decayHours, maxZoneCount) =>
+    float comparisonAtr = math.max(commonAtr, evidence.sourceAtr)
+    float tolerancePrice = comparisonAtr * clusterToleranceAtr
+    float adjacentMergeDistancePrice = comparisonAtr * adjacentMergeDistanceAtr
+    int matchedIndex = f_find_matching_zone(zones, evidence.price, tolerancePrice, adjacentMergeDistancePrice)
+    float timeframeWeight = f_get_timeframe_weight(evidence.timeframeId, weight1m, weight15m, weight1h, weight4h, weightDaily)
+    float ageHours = math.max(0.0, float(time - evidence.pivotTime) / 3600000.0)
+    float recencyMultiplier = decayHours > 0 ? math.exp(-ageHours / decayHours) : 1.0
+    float volumeScore = not na(evidence.volumeRatio) ? math.max(0.0, evidence.volumeRatio - 1.0) * volumeBonus : 0.0
+    float evidenceScore = timeframeWeight * recencyMultiplier + volumeScore
+
+    if na(matchedIndex)
+        int initialRole = evidence.side == PIVOT_SIDE_HIGH ? ZONE_ROLE_RESISTANCE : ZONE_ROLE_SUPPORT
+        float initialHalfWidth = math.max(evidence.sourceAtr * minimumZoneWidthAtr / 2.0, syminfo.mintick)
+        LiquidityZone newZone = LiquidityZone.new(evidence.price + initialHalfWidth, evidence.price - initialHalfWidth, evidence.price, initialRole, ZONE_STATE_ACTIVE, evidence.pivotTime, na, 1, f_get_timeframe_mask(evidence.timeframeId), evidenceScore, evidence.pivotTime)
+        array.push(zones, newZone)
+    else
+        LiquidityZone zone = array.get(zones, matchedIndex)
+        int nextEvidenceCount = zone.evidenceCount + 1
+        float nextTop = math.max(zone.topPrice, evidence.price)
+        float nextBottom = math.min(zone.bottomPrice, evidence.price)
+        float nextCenter = (nextTop + nextBottom) / 2.0
+        float maximumWidth = comparisonAtr * maximumZoneWidthAtr
+        float minimumWidth = comparisonAtr * minimumZoneWidthAtr
+        float currentWidth = nextTop - nextBottom
+        if currentWidth > maximumWidth
+            nextTop := nextCenter + maximumWidth / 2.0
+            nextBottom := nextCenter - maximumWidth / 2.0
+        else if currentWidth < minimumWidth
+            nextTop := nextCenter + minimumWidth / 2.0
+            nextBottom := nextCenter - minimumWidth / 2.0
+
+        int evidenceRole = evidence.side == PIVOT_SIDE_HIGH ? ZONE_ROLE_RESISTANCE : ZONE_ROLE_SUPPORT
+        int nextRole = zone.role == evidenceRole ? zone.role : ZONE_ROLE_NEUTRAL
+        int nextState = ZONE_STATE_ACTIVE
+        float nextScore = zone.score + evidenceScore + reactionBonus
+        int nextTimeframeMask = f_merge_timeframe_mask(zone.timeframeMask, f_get_timeframe_mask(evidence.timeframeId))
+        LiquidityZone updatedZone = LiquidityZone.new(nextTop, nextBottom, (nextTop + nextBottom) / 2.0, nextRole, nextState, zone.createdTime, zone.invalidatedTime, nextEvidenceCount, nextTimeframeMask, nextScore, math.max(zone.lastEvidenceTime, evidence.pivotTime))
+        array.set(zones, matchedIndex, updatedZone)
+
+    f_merge_adjacent_active_zones(zones, commonAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr)
+    f_trim_lowest_scoring_zone(zones, maxZoneCount)
+
+f_update_zone_states(zones, commonAtr, invalidationBufferAtr, activeZoneMaxAgeHours, invalidatedRetentionHours) =>
+    int zoneIndex = array.size(zones) - 1
+    while zoneIndex >= 0
+        LiquidityZone zone = array.get(zones, zoneIndex)
+        float invalidationBuffer = commonAtr * invalidationBufferAtr
+        bool isActiveExpired = zone.state == ZONE_STATE_ACTIVE and time - zone.createdTime >= activeZoneMaxAgeHours * 3600000
+        bool isResistanceBroken = zone.role == ZONE_ROLE_RESISTANCE and close > zone.topPrice + invalidationBuffer
+        bool isSupportBroken = zone.role == ZONE_ROLE_SUPPORT and close < zone.bottomPrice - invalidationBuffer
+        bool isNeutralBroken = zone.role == ZONE_ROLE_NEUTRAL and (close > zone.topPrice + invalidationBuffer or close < zone.bottomPrice - invalidationBuffer)
+        if isActiveExpired
+            array.remove(zones, zoneIndex)
+        else if zone.state == ZONE_STATE_ACTIVE and (isResistanceBroken or isSupportBroken or isNeutralBroken)
+            zone.state := ZONE_STATE_INVALIDATED
+            zone.invalidatedTime := time
+            array.set(zones, zoneIndex, zone)
+        else if zone.state == ZONE_STATE_INVALIDATED and not na(zone.invalidatedTime) and time - zone.invalidatedTime >= invalidatedRetentionHours * 3600000
+            array.remove(zones, zoneIndex)
+        zoneIndex := zoneIndex - 1

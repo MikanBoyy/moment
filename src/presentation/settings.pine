@@ -1,0 +1,40 @@
+string GROUP_TIMEFRAMES = "時間足と重み"
+string GROUP_ZIGZAG = "ZigZag"
+string GROUP_ZONES = "流動性ゾーン"
+string GROUP_DISPLAY = "表示"
+
+bool enable1m = input.bool(true, "1分足", group = GROUP_TIMEFRAMES)
+bool enable15m = input.bool(true, "15分足", group = GROUP_TIMEFRAMES)
+bool enable1h = input.bool(true, "1時間足", group = GROUP_TIMEFRAMES)
+bool enable4h = input.bool(true, "4時間足", group = GROUP_TIMEFRAMES)
+bool enableDaily = input.bool(true, "日足", group = GROUP_TIMEFRAMES)
+float weight1m = input.float(1.0, "1分足の重み", minval = 0.0, step = 0.5, group = GROUP_TIMEFRAMES)
+float weight15m = input.float(3.0, "15分足の重み", minval = 0.0, step = 0.5, group = GROUP_TIMEFRAMES)
+float weight1h = input.float(5.0, "1時間足の重み", minval = 0.0, step = 0.5, group = GROUP_TIMEFRAMES)
+float weight4h = input.float(8.0, "4時間足の重み", minval = 0.0, step = 0.5, group = GROUP_TIMEFRAMES)
+float weightDaily = input.float(13.0, "日足の重み", minval = 0.0, step = 0.5, group = GROUP_TIMEFRAMES)
+
+int atrPeriod = input.int(14, "ATR期間", minval = 1, group = GROUP_ZIGZAG)
+int pivotStrength = input.int(3, "ピボット強度", minval = 1, maxval = 20, group = GROUP_ZIGZAG, tooltip = "左右それぞれに必要な確定バー数。小さいほど多くの水平線候補を作ります。")
+
+int maxEvidenceCount = input.int(160, "ピボット証拠の保持数", minval = 20, maxval = 400, group = GROUP_ZONES)
+int maxZoneCount = input.int(40, "候補ゾーン上限", minval = 5, maxval = 80, group = GROUP_ZONES)
+int displayedZoneCount = input.int(12, "表示ゾーン数", minval = 1, maxval = 30, group = GROUP_DISPLAY)
+float displayOverlapThreshold = input.float(0.60, "描画重複抑制率", minval = 0.0, maxval = 1.0, step = 0.05, group = GROUP_DISPLAY, tooltip = "高スコア帯との重複幅が狭い方の帯幅に対してこの割合以上なら、低スコア帯を描画しません。0で無効化します。")
+float minimumScore = input.float(0.0, "表示最小スコア", minval = 0.0, step = 0.5, group = GROUP_ZONES)
+float clusterToleranceAtr = input.float(0.55, "クラスタ許容幅 (15分ATR)", minval = 0.1, step = 0.05, group = GROUP_ZONES)
+float adjacentMergeDistanceAtr = input.float(0.30, "近接ゾーン統合距離 (ATR)", minval = 0.0, step = 0.05, group = GROUP_ZONES, tooltip = "ゾーン端からこのATR距離以内のピボットを同じゾーンへ統合します。0で無効化します。")
+float minimumZoneWidthAtr = input.float(0.20, "最小ゾーン幅 (ATR)", minval = 0.05, step = 0.05, group = GROUP_ZONES)
+float maximumZoneWidthAtr = input.float(1.20, "最大ゾーン幅 (ATR)", minval = 0.2, step = 0.1, group = GROUP_ZONES)
+float reactionBonus = input.float(0.8, "反応追加ボーナス", minval = 0.0, step = 0.1, group = GROUP_ZONES)
+float volumeBonus = input.float(0.5, "相対出来高ボーナス", minval = 0.0, step = 0.1, group = GROUP_ZONES)
+float decayHours = input.float(336.0, "鮮度半減係数 (時間)", minval = 1.0, step = 12.0, group = GROUP_ZONES)
+float invalidationBufferAtr = input.float(0.15, "無効化バッファ (ATR)", minval = 0.0, step = 0.05, group = GROUP_ZONES)
+int activeZoneMaxAgeHours = input.int(720, "有効ゾーン最大寿命 (時間)", minval = 1, maxval = 8760, group = GROUP_ZONES, tooltip = "ゾーン作成からこの時間が経過した有効ゾーンを削除します。新しい証拠が追加されても寿命は延長しません。")
+int invalidatedRetentionHours = input.int(120, "無効ゾーン保持時間", minval = 1, maxval = 1000, group = GROUP_ZONES)
+
+color supportColor = input.color(#29B6F6, "サポート", group = GROUP_DISPLAY)
+color resistanceColor = input.color(#F2A93B, "レジスタンス", group = GROUP_DISPLAY)
+color neutralColor = input.color(#B0BEC5, "コンフルエンス", group = GROUP_DISPLAY)
+bool showDebugLabels = input.bool(false, "スコアラベル", group = GROUP_DISPLAY)
+bool showStatus = input.bool(false, "集計ステータス", group = GROUP_DISPLAY)
