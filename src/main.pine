@@ -1,5 +1,5 @@
 //@version=6
-indicator("moment", overlay = true, max_boxes_count = 100, max_lines_count = 120, max_labels_count = 100)
+indicator("moment", overlay = true, behind_chart = false, max_boxes_count = 100, max_lines_count = 120, max_labels_count = 100)
 
 //#include "domain/constants.pine"
 //#include "domain/types.pine"

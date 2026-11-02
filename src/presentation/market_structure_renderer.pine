@@ -1,7 +1,7 @@
 color structureBarColor = colorStructureBars and supportedSignalChart ? (structureState.direction == 1 ? structureBullishBarColor : structureState.direction == -1 ? structureBearishBarColor : structureNeutralBarColor) : na
 barcolor(structureBarColor, title = "市場構造のバー色")
 
-var table marketStructureTable = table.new(position.top_left, 2, 8, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+var table marketStructureTable = table.new(position.top_left, 2, 8, bgcolor = color.black, frame_color = color.gray, frame_width = 1)
 if barstate.islast
     table.clear(marketStructureTable, 0, 0, 1, 7)
     if showMarketStructure

@@ -16,7 +16,7 @@ f_profit_factor_text(float grossProfit, float grossLoss) =>
 f_win_rate_text(int winCount, int closedCount) =>
     closedCount > 0 ? str.tostring(100.0 * winCount / closedCount, "#.0") + "% (" + str.tostring(winCount) + "/" + str.tostring(closedCount) + ")" : "- (0件)"
 
-var table signalDiagnostics = table.new(position.bottom_left, 2, 19, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+var table signalDiagnostics = table.new(position.bottom_left, 2, 19, bgcolor = color.black, frame_color = color.gray, frame_width = 1)
 var string lastSignalDirection = "-"
 var string lastSignalTime = "-"
 var string lastSignalZone = "-"
