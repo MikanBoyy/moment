@@ -39,7 +39,8 @@ type SignalPositionState
 
 type StructurePositionState
     int direction
-    float profitTarget
+    float opposingZonePrice
+    float entryPrice
 
 type StructureZoneCandidate
     int pivotBar

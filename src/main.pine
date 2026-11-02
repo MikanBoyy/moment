@@ -25,7 +25,7 @@ var array<SignalZoneCandidate> signalZoneCandidates = array.new<SignalZoneCandid
 var array<StructureZoneCandidate> structureZoneCandidates = array.new<StructureZoneCandidate>()
 var MarketStructureState structureState = MarketStructureState.new(0, 0, 0, false, na, na, false)
 var SignalPositionState signalPosition = SignalPositionState.new(ZONE_ROLE_NEUTRAL, na, na, 0, na)
-var StructurePositionState structurePosition = StructurePositionState.new(0, na)
+var StructurePositionState structurePosition = StructurePositionState.new(0, na, na)
 var int lastEstablishedStructureDirection = 0
 
 bool supportedSignalChart = chart.is_standard and (timeframe.isseconds or timeframe.isminutes or timeframe.isdaily or timeframe.isweekly or timeframe.ismonthly)

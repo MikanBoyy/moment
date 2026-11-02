@@ -62,7 +62,7 @@ float exitBufferAtr = input.float(0.35, "撤退判定の余裕幅 (15分ATR)", m
 int exitConfirmationBars = input.int(2, "撤退判定の連続確定バー数", minval = 1, maxval = 5, group = GROUP_DIV)
 
 bool showMarketStructure = input.bool(true, "市場構造を表示", group = GROUP_STRUCTURE)
-bool showStructureSignals = input.bool(true, "市場構造の売買サインを表示", group = GROUP_STRUCTURE, tooltip = "反転・利確・撤退サインと利確目標線の表示を切り替えます。追跡とアラートには影響しません。")
+bool showStructureSignals = input.bool(true, "市場構造の売買サインを表示", group = GROUP_STRUCTURE, tooltip = "反転・利確・撤退サインとエントリー時の対向帯参考線の表示を切り替えます。追跡とアラートには影響しません。")
 bool colorStructureBars = input.bool(true, "市場構造でバーを着色", group = GROUP_STRUCTURE, tooltip = "確定済みの市場構造に応じて着色します。終了候補・判定保留は中立色です。")
 color structureBullishBarColor = input.color(#26A69A, "上昇構造のバー色", group = GROUP_STRUCTURE)
 color structureBearishBarColor = input.color(#EF5350, "下降構造のバー色", group = GROUP_STRUCTURE)

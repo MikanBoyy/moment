@@ -31,5 +31,5 @@ if barstate.islast
         table.cell(marketStructureTable, 1, 5, supportedSignalChart ? fallbackText : "-", text_color = color.white)
         table.cell(marketStructureTable, 0, 6, "構造ポジション", text_color = color.white)
         table.cell(marketStructureTable, 1, 6, structurePosition.direction == 1 ? "BUY" : structurePosition.direction == -1 ? "SELL" : "なし", text_color = color.white)
-        table.cell(marketStructureTable, 0, 7, "構造利確目標", text_color = color.white)
-        table.cell(marketStructureTable, 1, 7, structurePosition.direction == 0 ? "-" : na(structurePosition.profitTarget) ? "目標帯なし" : str.tostring(structurePosition.profitTarget, format.mintick), text_color = color.white)
+        table.cell(marketStructureTable, 0, 7, "構造対向帯参考", text_color = color.white)
+        table.cell(marketStructureTable, 1, 7, structurePosition.direction == 0 ? "-" : na(structurePosition.opposingZonePrice) ? "対向帯なし" : str.tostring(structurePosition.opposingZonePrice, format.mintick), text_color = color.white)

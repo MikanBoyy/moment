@@ -4,7 +4,7 @@ plotshape(showStructureSignals and structureExitBuy, title = "Market structure e
 plotshape(showStructureSignals and structureExitSell, title = "Market structure exit sell", style = shape.xcross, location = location.belowbar, color = color.new(#1565C0, 0), size = size.small, text = "構造 EXIT SELL")
 plotshape(showStructureSignals and structureProfitBuy, title = "Market structure take profit buy", style = shape.diamond, location = location.abovebar, color = color.new(#00897B, 0), size = size.small, text = "構造 TP BUY")
 plotshape(showStructureSignals and structureProfitSell, title = "Market structure take profit sell", style = shape.diamond, location = location.belowbar, color = color.new(#00897B, 0), size = size.small, text = "構造 TP SELL")
-plot(showStructureSignals and structurePosition.direction != 0 ? structurePosition.profitTarget : na, title = "Market structure profit target", color = color.new(#00897B, 25), style = plot.style_linebr)
+plot(showStructureSignals and structurePosition.direction != 0 ? structurePosition.opposingZonePrice : na, title = "Market structure opposing zone reference", color = color.new(#00897B, 25), style = plot.style_linebr)
 
 alertcondition(structureBuySignal, title = "Market structure buy", message = "市場構造の反転 BUY: {{ticker}}")
 alertcondition(structureSellSignal, title = "Market structure sell", message = "市場構造の反転 SELL: {{ticker}}")
