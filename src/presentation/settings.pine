@@ -63,6 +63,10 @@ int exitConfirmationBars = input.int(2, "撤退判定の連続確定バー数", 
 
 bool showMarketStructure = input.bool(true, "市場構造を表示", group = GROUP_STRUCTURE)
 bool showStructureSignals = input.bool(true, "市場構造の売買サインを表示", group = GROUP_STRUCTURE, tooltip = "反転・利確・撤退サインと利確目標線の表示を切り替えます。追跡とアラートには影響しません。")
+bool colorStructureBars = input.bool(true, "市場構造でバーを着色", group = GROUP_STRUCTURE, tooltip = "確定済みの市場構造に応じて着色します。終了候補・判定保留は中立色です。")
+color structureBullishBarColor = input.color(#26A69A, "上昇構造のバー色", group = GROUP_STRUCTURE)
+color structureBearishBarColor = input.color(#EF5350, "下降構造のバー色", group = GROUP_STRUCTURE)
+color structureNeutralBarColor = input.color(#9E9E9E, "終了候補・判定保留のバー色", group = GROUP_STRUCTURE)
 int marketStructurePivotStrength = input.int(3, "市場構造ピボット強度", minval = 1, maxval = 20, group = GROUP_STRUCTURE, tooltip = "チャート足のピボットを確定するための左右それぞれのバー数。ゾーン用の設定とは独立しています。")
 float structureBreakBufferAtr = input.float(0.15, "構造終了バッファ (ATR倍率)", minval = 0.0, step = 0.05, group = GROUP_STRUCTURE, tooltip = "基準帯には認定候補時に記録した15分ATR、帯がない場合は前足のチャート足ATRを使用します。")
 int structureMaxWaitBars = input.int(20, "構造候補の有効期間 (バー)", minval = 20, maxval = 100, group = GROUP_STRUCTURE, tooltip = "ピボット候補足からこの本数以内に高値または安値の突破とピボット確定の両方を確認します。")
