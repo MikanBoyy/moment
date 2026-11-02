@@ -10,7 +10,13 @@ f_signal_pivot_distance(SignalZoneCandidate zone) =>
 f_signal_zone_distance(SignalZoneCandidate zone) =>
     na(zone) ? "-" : str.tostring(math.max(0.0, math.max(zone.bottomPrice - close, close - zone.topPrice)) / zone.atr, "#.00") + " ATR"
 
-var table signalDiagnostics = table.new(position.bottom_left, 2, 15, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+f_profit_factor_text(float grossProfit, float grossLoss) =>
+    grossLoss > 0 ? str.tostring(grossProfit / grossLoss, "#.00") : grossProfit > 0 ? "損失なし" : "-"
+
+f_win_rate_text(int winCount, int closedCount) =>
+    closedCount > 0 ? str.tostring(100.0 * winCount / closedCount, "#.0") + "% (" + str.tostring(winCount) + "/" + str.tostring(closedCount) + ")" : "- (0件)"
+
+var table signalDiagnostics = table.new(position.bottom_left, 2, 19, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
 var string lastSignalDirection = "-"
 var string lastSignalTime = "-"
 var string lastSignalZone = "-"
@@ -42,10 +48,18 @@ if finalBullishSignal or finalBearishSignal
 if barstate.islast
     string signalStatus = not enableDivSignals ? "無効" : not supportedSignalChart ? "通常の時間足のみ" : not validSignalSettings ? "ピボット間隔の設定が不正" : requireZoneMatch and requireHigherTfEvidence and not hasHtfSource ? "1時間足以上の証拠が無効" : not requireZoneMatch and enableExitSignals ? "RSI単独: 撤退判定なし" : "有効"
     bool showTable = showSignalDiagnostics or (enableDivSignals and (not supportedSignalChart or not validSignalSettings or (requireZoneMatch and requireHigherTfEvidence and not hasHtfSource)))
-    table.clear(signalDiagnostics, 0, 0, 1, 14)
+    table.clear(signalDiagnostics, 0, 0, 1, 18)
     if showTable
-        string profitFactorText = simulatedGrossLoss > 0 ? str.tostring(simulatedGrossProfit / simulatedGrossLoss, "#.00") : simulatedGrossProfit > 0 ? "損失なし" : "-"
-        string winRateText = simulatedClosedCount > 0 ? str.tostring(100.0 * simulatedWinCount / simulatedClosedCount, "#.0") + "% (" + str.tostring(simulatedWinCount) + "/" + str.tostring(simulatedClosedCount) + ")" : "- (0件)"
+        string profitFactorText = f_profit_factor_text(simulatedGrossProfit, simulatedGrossLoss)
+        string winRateText = f_win_rate_text(simulatedWinCount, simulatedClosedCount)
+        float totalGrossProfit = simulatedGrossProfit + structureSimulatedGrossProfit
+        float totalGrossLoss = simulatedGrossLoss + structureSimulatedGrossLoss
+        int totalClosedCount = simulatedClosedCount + structureSimulatedClosedCount
+        int totalWinCount = simulatedWinCount + structureSimulatedWinCount
+        string structureProfitFactorText = f_profit_factor_text(structureSimulatedGrossProfit, structureSimulatedGrossLoss)
+        string structureWinRateText = f_win_rate_text(structureSimulatedWinCount, structureSimulatedClosedCount)
+        string totalProfitFactorText = f_profit_factor_text(totalGrossProfit, totalGrossLoss)
+        string totalWinRateText = f_win_rate_text(totalWinCount, totalClosedCount)
         table.cell(signalDiagnostics, 0, 0, "シグナル", text_color = color.white)
         table.cell(signalDiagnostics, 1, 0, signalStatus, text_color = color.white)
         table.cell(signalDiagnostics, 0, 1, "直近", text_color = color.white)
@@ -58,22 +72,30 @@ if barstate.islast
         table.cell(signalDiagnostics, 1, 4, signalPosition.direction == ZONE_ROLE_NEUTRAL ? "-" : na(signalPosition.profitTarget) ? "目標帯なし" : str.tostring(signalPosition.profitTarget, format.mintick), text_color = color.white)
         table.cell(signalDiagnostics, 0, 5, "撤退基準", text_color = color.white)
         table.cell(signalDiagnostics, 1, 5, not enableExitSignals ? "無効" : na(signalPosition.stopLevel) ? "なし" : str.tostring(signalPosition.stopLevel, format.mintick), text_color = color.white)
-        table.cell(signalDiagnostics, 0, 6, "仮想PF", text_color = color.white)
+        table.cell(signalDiagnostics, 0, 6, "RSI 仮想PF", text_color = color.white)
         table.cell(signalDiagnostics, 1, 6, profitFactorText, text_color = color.white)
-        table.cell(signalDiagnostics, 0, 7, "仮想勝率", text_color = color.white)
+        table.cell(signalDiagnostics, 0, 7, "RSI 仮想勝率", text_color = color.white)
         table.cell(signalDiagnostics, 1, 7, winRateText, text_color = color.white)
+        table.cell(signalDiagnostics, 0, 8, "構造 仮想PF", text_color = color.white)
+        table.cell(signalDiagnostics, 1, 8, structureProfitFactorText, text_color = color.white)
+        table.cell(signalDiagnostics, 0, 9, "構造 仮想勝率", text_color = color.white)
+        table.cell(signalDiagnostics, 1, 9, structureWinRateText, text_color = color.white)
+        table.cell(signalDiagnostics, 0, 10, "合算 仮想PF", text_color = color.white)
+        table.cell(signalDiagnostics, 1, 10, totalProfitFactorText, text_color = color.white)
+        table.cell(signalDiagnostics, 0, 11, "合算 仮想勝率", text_color = color.white)
+        table.cell(signalDiagnostics, 1, 11, totalWinRateText, text_color = color.white)
         if showSignalDetails
-            table.cell(signalDiagnostics, 0, 8, "P / C", text_color = color.white)
-            table.cell(signalDiagnostics, 1, 8, lastSignalTime, text_color = color.white)
-            table.cell(signalDiagnostics, 0, 9, "帯", text_color = color.white)
-            table.cell(signalDiagnostics, 1, 9, lastSignalZone, text_color = color.white)
-            table.cell(signalDiagnostics, 0, 10, "役割 / スコア / 時間足", text_color = color.white)
-            table.cell(signalDiagnostics, 1, 10, lastSignalEvidence, text_color = color.white)
-            table.cell(signalDiagnostics, 0, 11, "PからCの距離", text_color = color.white)
-            table.cell(signalDiagnostics, 1, 11, lastSignalDistance, text_color = color.white)
-            table.cell(signalDiagnostics, 0, 12, "Cから帯の距離", text_color = color.white)
-            table.cell(signalDiagnostics, 1, 12, lastSignalZoneDistance, text_color = color.white)
-            table.cell(signalDiagnostics, 0, 13, "RSI候補 買 / 売", text_color = color.white)
-            table.cell(signalDiagnostics, 1, 13, str.tostring(rawBullishCount) + " / " + str.tostring(rawBearishCount), text_color = color.white)
-            table.cell(signalDiagnostics, 0, 14, "最終サイン 買 / 売", text_color = color.white)
-            table.cell(signalDiagnostics, 1, 14, str.tostring(finalBullishCount) + " / " + str.tostring(finalBearishCount), text_color = color.white)
+            table.cell(signalDiagnostics, 0, 12, "P / C", text_color = color.white)
+            table.cell(signalDiagnostics, 1, 12, lastSignalTime, text_color = color.white)
+            table.cell(signalDiagnostics, 0, 13, "帯", text_color = color.white)
+            table.cell(signalDiagnostics, 1, 13, lastSignalZone, text_color = color.white)
+            table.cell(signalDiagnostics, 0, 14, "役割 / スコア / 時間足", text_color = color.white)
+            table.cell(signalDiagnostics, 1, 14, lastSignalEvidence, text_color = color.white)
+            table.cell(signalDiagnostics, 0, 15, "PからCの距離", text_color = color.white)
+            table.cell(signalDiagnostics, 1, 15, lastSignalDistance, text_color = color.white)
+            table.cell(signalDiagnostics, 0, 16, "Cから帯の距離", text_color = color.white)
+            table.cell(signalDiagnostics, 1, 16, lastSignalZoneDistance, text_color = color.white)
+            table.cell(signalDiagnostics, 0, 17, "RSI候補 買 / 売", text_color = color.white)
+            table.cell(signalDiagnostics, 1, 17, str.tostring(rawBullishCount) + " / " + str.tostring(rawBearishCount), text_color = color.white)
+            table.cell(signalDiagnostics, 0, 18, "最終サイン 買 / 売", text_color = color.white)
+            table.cell(signalDiagnostics, 1, 18, str.tostring(finalBullishCount) + " / " + str.tostring(finalBearishCount), text_color = color.white)

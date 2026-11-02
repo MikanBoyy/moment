@@ -56,11 +56,13 @@ float minSignalZoneScore = input.float(2.0, "シグナル対象最小ゾーン�
 bool requireHigherTfEvidence = input.bool(true, "1時間足以上の証拠を必須化", group = GROUP_DIV)
 bool showSignalDiagnostics = input.bool(false, "直近シグナルの診断", group = GROUP_DIV)
 bool showSignalDetails = input.bool(false, "診断の詳細表示", group = GROUP_DIV, tooltip = "ピボット時刻、採用帯、距離、候補件数を追加表示します。")
+bool enableAddSignals = input.bool(true, "ナンピン・ピラミッティングサインを表示", group = GROUP_DIV, tooltip = "初回サインの確定終値を基準に同方向のサインを分類します。仮想成績や撤退・利確基準には反映しません。")
 bool enableExitSignals = input.bool(true, "撤退判定を有効化", group = GROUP_DIV, tooltip = "無効時は撤退基準による追跡終了を行いません。利確と反対サインによる追跡終了は有効です。実際のポジションは参照しません。")
 float exitBufferAtr = input.float(0.35, "撤退判定の余裕幅 (15分ATR)", minval = 0.0, step = 0.05, group = GROUP_DIV)
 int exitConfirmationBars = input.int(2, "撤退判定の連続確定バー数", minval = 1, maxval = 5, group = GROUP_DIV)
 
 bool showMarketStructure = input.bool(true, "市場構造を表示", group = GROUP_STRUCTURE)
+bool showStructureSignals = input.bool(true, "市場構造の売買サインを表示", group = GROUP_STRUCTURE, tooltip = "反転・利確・撤退サインと利確目標線の表示を切り替えます。追跡とアラートには影響しません。")
 int marketStructurePivotStrength = input.int(3, "市場構造ピボット強度", minval = 1, maxval = 20, group = GROUP_STRUCTURE, tooltip = "チャート足のピボットを確定するための左右それぞれのバー数。ゾーン用の設定とは独立しています。")
 float structureBreakBufferAtr = input.float(0.15, "構造終了バッファ (ATR倍率)", minval = 0.0, step = 0.05, group = GROUP_STRUCTURE, tooltip = "基準帯には認定候補時に記録した15分ATR、帯がない場合は前足のチャート足ATRを使用します。")
 int structureMaxWaitBars = input.int(20, "構造候補の有効期間 (バー)", minval = 20, maxval = 100, group = GROUP_STRUCTURE, tooltip = "ピボット候補足からこの本数以内に高値または安値の突破とピボット確定の両方を確認します。")

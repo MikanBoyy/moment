@@ -1,0 +1,3 @@
+f_closed_trade_performance(float entryPrice, float exitPrice, bool isBuy) =>
+    float result = isBuy ? exitPrice - entryPrice : entryPrice - exitPrice
+    [math.max(result, 0.0), math.max(-result, 0.0), result > 0 ? 1 : 0]

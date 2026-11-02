@@ -9,9 +9,26 @@ if finalBullishSignal or finalBearishSignal
 if exitBullishSignal or profitBullishSignal or reverseBullishSignal or exitBearishSignal or profitBearishSignal or reverseBearishSignal
     bool closedBullish = exitBullishSignal or profitBullishSignal or reverseBullishSignal
     if not na(simulatedEntryPrice)
-        float simulatedResult = closedBullish ? close - simulatedEntryPrice : simulatedEntryPrice - close
-        simulatedGrossProfit := simulatedGrossProfit + math.max(simulatedResult, 0.0)
-        simulatedGrossLoss := simulatedGrossLoss + math.max(-simulatedResult, 0.0)
+        [grossProfit, grossLoss, winCount] = f_closed_trade_performance(simulatedEntryPrice, close, closedBullish)
+        simulatedGrossProfit := simulatedGrossProfit + grossProfit
+        simulatedGrossLoss := simulatedGrossLoss + grossLoss
         simulatedClosedCount := simulatedClosedCount + 1
-        simulatedWinCount := simulatedWinCount + (simulatedResult > 0 ? 1 : 0)
+        simulatedWinCount := simulatedWinCount + winCount
     simulatedEntryPrice := na
+
+var float structureSimulatedEntryPrice = na
+var float structureSimulatedGrossProfit = 0.0
+var float structureSimulatedGrossLoss = 0.0
+var int structureSimulatedClosedCount = 0
+var int structureSimulatedWinCount = 0
+if barstate.isconfirmed and previousStructurePositionDirection == 0 and structurePosition.direction != 0
+    structureSimulatedEntryPrice := close
+if structureExitBuy or structureProfitBuy or structureExitSell or structureProfitSell
+    bool closedBuy = structureExitBuy or structureProfitBuy
+    if not na(structureSimulatedEntryPrice)
+        [grossProfit, grossLoss, winCount] = f_closed_trade_performance(structureSimulatedEntryPrice, close, closedBuy)
+        structureSimulatedGrossProfit := structureSimulatedGrossProfit + grossProfit
+        structureSimulatedGrossLoss := structureSimulatedGrossLoss + grossLoss
+        structureSimulatedClosedCount := structureSimulatedClosedCount + 1
+        structureSimulatedWinCount := structureSimulatedWinCount + winCount
+    structureSimulatedEntryPrice := na

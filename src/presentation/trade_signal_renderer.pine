@@ -6,6 +6,10 @@ plotshape(profitBullishSignal, title = "Take profit bullish", style = shape.diam
 plotshape(profitBearishSignal, title = "Take profit bearish", style = shape.diamond, location = location.belowbar, color = color.new(#00897B, 0), size = size.small, text = "TP SELL")
 plotshape(reverseBullishSignal, title = "Opposite signal exit bullish", style = shape.xcross, location = location.abovebar, color = color.new(#FF9800, 0), size = size.small, text = "REV BUY")
 plotshape(reverseBearishSignal, title = "Opposite signal exit bearish", style = shape.xcross, location = location.belowbar, color = color.new(#FF9800, 0), size = size.small, text = "REV SELL")
+plotshape(averageDownBullishSignal, title = "Average down buy", style = shape.triangleup, location = location.belowbar, color = color.new(#F9A825, 0), size = size.tiny, text = "AVG BUY")
+plotshape(averageDownBearishSignal, title = "Average down sell", style = shape.triangledown, location = location.abovebar, color = color.new(#F9A825, 0), size = size.tiny, text = "AVG SELL")
+plotshape(pyramidBullishSignal, title = "Pyramid buy", style = shape.triangleup, location = location.belowbar, color = color.new(#26A69A, 0), size = size.tiny, text = "PYR BUY")
+plotshape(pyramidBearishSignal, title = "Pyramid sell", style = shape.triangledown, location = location.abovebar, color = color.new(#26A69A, 0), size = size.tiny, text = "PYR SELL")
 plot(enableExitSignals and signalPosition.direction != ZONE_ROLE_NEUTRAL ? signalPosition.stopLevel : na, title = "Exit threshold", color = color.new(#D84315, 25), style = plot.style_linebr)
 plot(signalPosition.direction != ZONE_ROLE_NEUTRAL ? signalPosition.profitTarget : na, title = "Profit target", color = color.new(#00897B, 25), style = plot.style_linebr)
 
@@ -19,3 +23,7 @@ alertcondition(profitBullishSignal, title = "Take profit bullish divergence", me
 alertcondition(profitBearishSignal, title = "Take profit bearish divergence", message = "SELLシグナルの利確候補: {{ticker}}")
 alertcondition(reverseBullishSignal, title = "Opposite signal exit bullish", message = "反対サインによるBUY決済候補: {{ticker}}")
 alertcondition(reverseBearishSignal, title = "Opposite signal exit bearish", message = "反対サインによるSELL決済候補: {{ticker}}")
+alertcondition(averageDownBullishSignal, title = "Average down buy", message = "BUYナンピン候補: {{ticker}}")
+alertcondition(averageDownBearishSignal, title = "Average down sell", message = "SELLナンピン候補: {{ticker}}")
+alertcondition(pyramidBullishSignal, title = "Pyramid buy", message = "BUYピラミッティング候補: {{ticker}}")
+alertcondition(pyramidBearishSignal, title = "Pyramid sell", message = "SELLピラミッティング候補: {{ticker}}")

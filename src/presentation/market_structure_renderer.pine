@@ -1,6 +1,6 @@
-var table marketStructureTable = table.new(position.top_left, 2, 6, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+var table marketStructureTable = table.new(position.top_left, 2, 8, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
 if barstate.islast
-    table.clear(marketStructureTable, 0, 0, 1, 5)
+    table.clear(marketStructureTable, 0, 0, 1, 7)
     if showMarketStructure
         bool hasProtectedZone = not na(structureState.protectedZone)
         float fallbackReference = structureState.direction == 1 ? structureLatestLow[1] : structureState.direction == -1 ? structureLatestHigh[1] : na
@@ -26,3 +26,7 @@ if barstate.islast
         table.cell(marketStructureTable, 1, 4, supportedSignalChart ? pendingText : "-", text_color = color.white)
         table.cell(marketStructureTable, 0, 5, "代替基準", text_color = color.white)
         table.cell(marketStructureTable, 1, 5, supportedSignalChart ? fallbackText : "-", text_color = color.white)
+        table.cell(marketStructureTable, 0, 6, "構造ポジション", text_color = color.white)
+        table.cell(marketStructureTable, 1, 6, structurePosition.direction == 1 ? "BUY" : structurePosition.direction == -1 ? "SELL" : "なし", text_color = color.white)
+        table.cell(marketStructureTable, 0, 7, "構造利確目標", text_color = color.white)
+        table.cell(marketStructureTable, 1, 7, structurePosition.direction == 0 ? "-" : na(structurePosition.profitTarget) ? "目標帯なし" : str.tostring(structurePosition.profitTarget, format.mintick), text_color = color.white)

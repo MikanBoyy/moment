@@ -35,6 +35,11 @@ type SignalPositionState
     float stopLevel
     float profitTarget
     int consecutiveBreaks
+    float entryPrice
+
+type StructurePositionState
+    int direction
+    float profitTarget
 
 type StructureZoneCandidate
     int pivotBar

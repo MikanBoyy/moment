@@ -1,0 +1,22 @@
+f_update_structure_position(StructurePositionState state, int structureDirection, bool buySignal, bool sellSignal, zones, int activeZoneMaxAgeHours) =>
+    bool exitBuy = false
+    bool exitSell = false
+    bool profitBuy = false
+    bool profitSell = false
+    if barstate.isconfirmed
+        int previousDirection = state.direction
+        if previousDirection != 0
+            bool structureEnded = structureDirection != previousDirection
+            bool profitHit = not na(state.profitTarget) and (previousDirection == 1 ? high >= state.profitTarget : low <= state.profitTarget)
+            if structureEnded or profitHit
+                exitBuy := structureEnded and previousDirection == 1
+                exitSell := structureEnded and previousDirection == -1
+                profitBuy := not structureEnded and profitHit and previousDirection == 1
+                profitSell := not structureEnded and profitHit and previousDirection == -1
+                state.direction := 0
+                state.profitTarget := na
+        else if buySignal != sellSignal
+            state.direction := buySignal ? 1 : -1
+            int zoneDirection = buySignal ? ZONE_ROLE_SUPPORT : ZONE_ROLE_RESISTANCE
+            state.profitTarget := f_find_profit_target(zones, zoneDirection, close, time, activeZoneMaxAgeHours)
+    [exitBuy, exitSell, profitBuy, profitSell]

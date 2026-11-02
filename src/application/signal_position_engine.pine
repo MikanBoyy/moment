@@ -1,4 +1,4 @@
-f_update_signal_position(SignalPositionState state, bool bullishSignal, bool bearishSignal, SignalZoneCandidate bullishZone, SignalZoneCandidate bearishZone, zones, bool enableExitSignals, float bufferAtr, int confirmationBars, int activeZoneMaxAgeHours) =>
+f_update_signal_position(SignalPositionState state, bool bullishSignal, bool bearishSignal, SignalZoneCandidate bullishZone, SignalZoneCandidate bearishZone, zones, bool enableExitSignals, bool enableAddSignals, float bufferAtr, int confirmationBars, int activeZoneMaxAgeHours) =>
     bool enterBullish = false
     bool enterBearish = false
     bool exitBullish = false
@@ -7,6 +7,10 @@ f_update_signal_position(SignalPositionState state, bool bullishSignal, bool bea
     bool profitBearish = false
     bool reverseBullish = false
     bool reverseBearish = false
+    bool averageDownBullish = false
+    bool averageDownBearish = false
+    bool pyramidBullish = false
+    bool pyramidBearish = false
     if barstate.isconfirmed
         int previousDirection = state.direction
         if previousDirection != ZONE_ROLE_NEUTRAL
@@ -26,6 +30,15 @@ f_update_signal_position(SignalPositionState state, bool bullishSignal, bool bea
                 state.stopLevel := na
                 state.profitTarget := na
                 state.consecutiveBreaks := 0
+                state.entryPrice := na
+            else if enableAddSignals and not na(state.entryPrice)
+                bool sameDirectionSignal = previousDirection == ZONE_ROLE_SUPPORT ? bullishSignal : bearishSignal
+                bool favorable = previousDirection == ZONE_ROLE_SUPPORT ? close > state.entryPrice : close < state.entryPrice
+                bool unfavorable = previousDirection == ZONE_ROLE_SUPPORT ? close < state.entryPrice : close > state.entryPrice
+                averageDownBullish := sameDirectionSignal and unfavorable and previousDirection == ZONE_ROLE_SUPPORT
+                averageDownBearish := sameDirectionSignal and unfavorable and previousDirection == ZONE_ROLE_RESISTANCE
+                pyramidBullish := sameDirectionSignal and favorable and previousDirection == ZONE_ROLE_SUPPORT
+                pyramidBearish := sameDirectionSignal and favorable and previousDirection == ZONE_ROLE_RESISTANCE
         else if bullishSignal != bearishSignal
             int direction = bullishSignal ? ZONE_ROLE_SUPPORT : ZONE_ROLE_RESISTANCE
             SignalZoneCandidate zone = bullishSignal ? bullishZone : bearishZone
@@ -33,6 +46,7 @@ f_update_signal_position(SignalPositionState state, bool bullishSignal, bool bea
             state.stopLevel := na(zone) ? na : direction == ZONE_ROLE_SUPPORT ? math.min(zone.bottomPrice, zone.pivotPrice) - zone.atr * bufferAtr : math.max(zone.topPrice, zone.pivotPrice) + zone.atr * bufferAtr
             state.profitTarget := f_find_profit_target(zones, direction, close, time, activeZoneMaxAgeHours)
             state.consecutiveBreaks := 0
+            state.entryPrice := close
             enterBullish := bullishSignal
             enterBearish := bearishSignal
-    [enterBullish, enterBearish, exitBullish, exitBearish, profitBullish, profitBearish, reverseBullish, reverseBearish]
+    [enterBullish, enterBearish, exitBullish, exitBearish, profitBullish, profitBearish, reverseBullish, reverseBearish, averageDownBullish, averageDownBearish, pyramidBullish, pyramidBearish]
