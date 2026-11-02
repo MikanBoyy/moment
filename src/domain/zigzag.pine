@@ -1,4 +1,5 @@
-// 確定した極値だけを返す。戻り値は [確定有無、価格、時刻、種別、ATR]。
+// atrPeriod と pivotStrength を使い、現在足で確認された高値・安値ピボットを抽出する。
+// 戻り値: [確定有無、価格、時刻、種別、現在足のATR、ピボット足の出来高比率]。
 f_extract_confirmed_pivot(atrPeriod, pivotStrength) =>
     float atrValue = ta.atr(atrPeriod)
     float volumeAverage = ta.sma(volume, 20)

@@ -1,3 +1,5 @@
+// entryPrice と exitPrice の差を isBuy に応じて評価する。手数料や数量は含めない。
+// 戻り値: [利益幅、損失幅、勝ちなら1・それ以外は0]。
 f_closed_trade_performance(float entryPrice, float exitPrice, bool isBuy) =>
     float result = isBuy ? exitPrice - entryPrice : entryPrice - exitPrice
     [math.max(result, 0.0), math.max(-result, 0.0), result > 0 ? 1 : 0]

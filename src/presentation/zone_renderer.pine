@@ -6,6 +6,7 @@ type ZoneRenderObjects
     line lowerBorder
     label debugLabel
 
+// renderObjects が保持する描画オブジェクトを削除し、配列を空にする。
 f_delete_zone_render_objects(renderObjects) =>
     if array.size(renderObjects) > 0
         for objectIndex = 0 to array.size(renderObjects) - 1
@@ -24,6 +25,8 @@ f_delete_zone_render_objects(renderObjects) =>
                 label.delete(renderObjectsAtIndex.debugLabel)
     array.clear(renderObjects)
 
+// zones から selected で未選択かつ minimumScore 以上の最高スコアの添字を返す。該当なしは na。
+// 直前足より前に作成されたゾーンだけを表示候補にする。
 f_find_highest_unselected_zone(zones, selected, minimumScore) =>
     int selectedIndex = na
     float highestScore = na
@@ -36,6 +39,7 @@ f_find_highest_unselected_zone(zones, selected, minimumScore) =>
                 highestScore := zone.score
     selectedIndex
 
+// zone の役割に対応する supportColor、resistanceColor、neutralColor を返す。
 f_get_zone_color(zone, supportColor, resistanceColor, neutralColor) =>
     color zoneColor = neutralColor
     if zone.role == ZONE_ROLE_SUPPORT
@@ -44,6 +48,8 @@ f_get_zone_color(zone, supportColor, resistanceColor, neutralColor) =>
         zoneColor := resistanceColor
     zoneColor
 
+// candidateZone と描画済み zones の重複率が overlapThreshold 以上かを返す。0以下なら判定しない。
+// renderedZoneIndices は描画済みゾーンの添字、重複率の分母は狭い方のゾーン幅。
 f_has_display_overlap(candidateZone, renderedZoneIndices, zones, overlapThreshold) =>
     bool hasOverlap = false
     if overlapThreshold > 0 and array.size(renderedZoneIndices) > 0
@@ -59,7 +65,12 @@ f_has_display_overlap(candidateZone, renderedZoneIndices, zones, overlapThreshol
                 hasOverlap := true
     hasOverlap
 
-f_render_zones(zones, renderObjects, displayedZoneCount, minimumScore, overlapThreshold, supportColor, resistanceColor, neutralColor, showDebugLabels) =>
+// zones をスコア順に選択して再描画し、renderObjects を更新して描画件数を返す。
+// displayedZoneCount は件数上限、minimumScore は下限、overlapThreshold は重複抑制の閾値。
+// 各 Color は役割別の色、showDebugLabels はスコアと証拠数の表示を制御する。
+f_render_zones(
+    zones, renderObjects, displayedZoneCount, minimumScore, overlapThreshold,
+    supportColor, resistanceColor, neutralColor, showDebugLabels) =>
     f_delete_zone_render_objects(renderObjects)
     array<bool> selected = array.new_bool(array.size(zones), false)
     array<int> renderedZoneIndices = array.new_int()
@@ -91,6 +102,7 @@ f_render_zones(zones, renderObjects, displayedZoneCount, minimumScore, overlapTh
             renderedCount := renderedCount + 1
     renderedCount
 
+// 古い statusLabel を削除し、showStatus の場合は各 Count を示す新しいラベルを返す。非表示時は na。
 f_render_status(statusLabel, pivotCount, zoneCount, renderedCount, showStatus) =>
     if not na(statusLabel)
         label.delete(statusLabel)

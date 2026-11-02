@@ -1,4 +1,9 @@
-f_detect_rsi_divergence(rsiPeriod, leftBars, rightBars, minBars, maxBars, oversold, overbought, requireRsiExtreme) =>
+// 価格ピボットと同時点のRSIを前回値と比較し、確定足のダイバージェンスを検出する。
+// rsiPeriod はRSI期間、leftBars/rightBars はピボット幅、minBars/maxBars は比較間隔。
+// oversold/overbought は requireRsiExtreme が有効な場合に前回RSIに適用する閾値。
+// 戻り値: [強気検出、弱気検出]。前回ピボットは関数内で保持する。
+f_detect_rsi_divergence(
+    rsiPeriod, leftBars, rightBars, minBars, maxBars, oversold, overbought, requireRsiExtreme) =>
     float rsi = ta.rsi(close, rsiPeriod)
     float pivotLow = ta.pivotlow(low, leftBars, rightBars)
     float pivotHigh = ta.pivothigh(high, leftBars, rightBars)

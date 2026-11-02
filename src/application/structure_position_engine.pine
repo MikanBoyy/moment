@@ -1,4 +1,9 @@
-f_update_structure_position(StructurePositionState state, int structureDirection, bool buySignal, bool sellSignal, zones, int activeZoneMaxAgeHours) =>
+// 確定足で構造ポジション state の新規追跡と構造終了を処理する。
+// structureDirection は終了判定、buySignal/sellSignal は入口、zones と activeZoneMaxAgeHours は対向境界の記録用。
+// 戻り値: [買い損失終了、売り損失終了、買い利益終了、売り利益終了]。終了足では新規追跡しない。
+f_update_structure_position(
+    StructurePositionState state, int structureDirection, bool buySignal, bool sellSignal, zones,
+    int activeZoneMaxAgeHours) =>
     bool exitBuy = false
     bool exitSell = false
     bool profitBuy = false

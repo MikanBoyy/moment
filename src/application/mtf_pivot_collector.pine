@@ -1,12 +1,16 @@
+// evidence を pivotEvidence に追加し、maxEvidenceCount を超えたら最古の要素を除去する。
 f_append_pivot_evidence_with_cap(pivotEvidence, evidence, maxEvidenceCount) =>
     array.push(pivotEvidence, evidence)
     if array.size(pivotEvidence) > maxEvidenceCount
         array.shift(pivotEvidence)
 
+// atrPeriod と pivotStrength で抽出した前足のピボット情報6要素を返す。上位足要求に使用する。
 f_extract_previous_confirmed_pivot(atrPeriod, pivotStrength) =>
     [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = f_extract_confirmed_pivot(atrPeriod, pivotStrength)
     [isConfirmed[1], pivotPrice[1], pivotTime[1], pivotSide[1], sourceAtr[1], volumeRatio[1]]
 
+// チャート足のピボットを重複なく pivotEvidence に追加し、追加件数0または1を返す。
+// atrPeriod と pivotStrength は抽出設定、maxEvidenceCount は配列の上限。
 f_collect_chart_pivots(pivotEvidence, atrPeriod, pivotStrength, maxEvidenceCount) =>
     var int lastChartPivotTime = na
     [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = f_extract_confirmed_pivot(atrPeriod, pivotStrength)
@@ -19,7 +23,11 @@ f_collect_chart_pivots(pivotEvidence, atrPeriod, pivotStrength, maxEvidenceCount
     else
         0
 
-f_collect_mtf_pivots(pivotEvidence, enable1m, enable15m, enable1h, enable4h, enableDaily, atrPeriod, pivotStrength, maxEvidenceCount) =>
+// 有効な時間足の新規ピボットを pivotEvidence に追加し、追加件数を返す。
+// enable 系は各取得元の選択、atrPeriod と pivotStrength は抽出設定、maxEvidenceCount は配列上限。
+// 時間足ごとの最終取得時刻を保持し、チャート足と同じ時間足はここでは取得しない。
+f_collect_mtf_pivots(
+    pivotEvidence, enable1m, enable15m, enable1h, enable4h, enableDaily, atrPeriod, pivotStrength, maxEvidenceCount) =>
     var int last1mPivotTime = na
     var int last15mPivotTime = na
     var int last1hPivotTime = na
