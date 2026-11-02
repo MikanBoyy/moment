@@ -1,6 +1,8 @@
 f_get_timeframe_weight(timeframeId, weight1m, weight15m, weight1h, weight4h, weightDaily) =>
     float weight = weight1m
-    if timeframeId == TIMEFRAME_ID_15M
+    if timeframeId == TIMEFRAME_ID_5M
+        weight := (weight1m + weight15m) / 2.0
+    else if timeframeId == TIMEFRAME_ID_15M or timeframeId == TIMEFRAME_ID_CHART
         weight := weight15m
     else if timeframeId == TIMEFRAME_ID_1H
         weight := weight1h
@@ -20,11 +22,21 @@ f_get_timeframe_mask(timeframeId) =>
         mask := 8
     else if timeframeId == TIMEFRAME_ID_D
         mask := 16
+    else if timeframeId == TIMEFRAME_ID_5M
+        mask := 32
+    else if timeframeId == TIMEFRAME_ID_CHART
+        mask := 64
     mask
 
 f_merge_timeframe_mask(existingMask, incomingMask) =>
-    bool alreadyIncluded = existingMask % (incomingMask * 2) >= incomingMask
-    alreadyIncluded ? existingMask : existingMask + incomingMask
+    int mergedMask = existingMask
+    for bitIndex = 0 to 6
+        int bitValue = int(math.pow(2, bitIndex))
+        bool incomingIncludesBit = incomingMask % (bitValue * 2) >= bitValue
+        bool existingIncludesBit = mergedMask % (bitValue * 2) >= bitValue
+        if incomingIncludesBit and not existingIncludesBit
+            mergedMask := mergedMask + bitValue
+    mergedMask
 
 f_find_matching_zone(zones, pivotPrice, clusterTolerancePrice, adjacentMergeDistancePrice) =>
     int matchedIndex = na

@@ -3,12 +3,17 @@ f_append_pivot_evidence_with_cap(pivotEvidence, evidence, maxEvidenceCount) =>
     if array.size(pivotEvidence) > maxEvidenceCount
         array.shift(pivotEvidence)
 
+f_extract_previous_confirmed_pivot(atrPeriod, pivotStrength) =>
+    [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = f_extract_confirmed_pivot(atrPeriod, pivotStrength)
+    [isConfirmed[1], pivotPrice[1], pivotTime[1], pivotSide[1], sourceAtr[1], volumeRatio[1]]
+
 f_collect_chart_pivots(pivotEvidence, atrPeriod, pivotStrength, maxEvidenceCount) =>
     var int lastChartPivotTime = na
     [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = f_extract_confirmed_pivot(atrPeriod, pivotStrength)
     bool isNewPivot = not na(pivotTime) and (na(lastChartPivotTime) or pivotTime != lastChartPivotTime)
     if isNewPivot
-        f_append_pivot_evidence_with_cap(pivotEvidence, PivotEvidence.new(pivotPrice, pivotTime, TIMEFRAME_ID_15M, pivotSide, sourceAtr, volumeRatio), maxEvidenceCount)
+        int chartTimeframeId = timeframe.isminutes and timeframe.multiplier == 1 ? TIMEFRAME_ID_1M : timeframe.isminutes and timeframe.multiplier == 5 ? TIMEFRAME_ID_5M : timeframe.isminutes and timeframe.multiplier == 15 ? TIMEFRAME_ID_15M : timeframe.isminutes and timeframe.multiplier == 60 ? TIMEFRAME_ID_1H : timeframe.isminutes and timeframe.multiplier == 240 ? TIMEFRAME_ID_4H : timeframe.isdaily and timeframe.multiplier == 1 ? TIMEFRAME_ID_D : TIMEFRAME_ID_CHART
+        f_append_pivot_evidence_with_cap(pivotEvidence, PivotEvidence.new(pivotPrice, pivotTime, chartTimeframeId, pivotSide, sourceAtr, volumeRatio), maxEvidenceCount)
         lastChartPivotTime := pivotTime
         1
     else
@@ -22,7 +27,7 @@ f_collect_mtf_pivots(pivotEvidence, enable1m, enable15m, enable1h, enable4h, ena
     var int lastDailyPivotTime = na
     int collectedCount = 0
 
-    if enable1m
+    if enable1m and timeframe.in_seconds() < timeframe.in_seconds("1")
         [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "1", f_extract_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
         bool isNewPivot = not na(pivotTime) and (na(last1mPivotTime) or pivotTime != last1mPivotTime)
         if isNewPivot
@@ -30,7 +35,14 @@ f_collect_mtf_pivots(pivotEvidence, enable1m, enable15m, enable1h, enable4h, ena
             last1mPivotTime := pivotTime
             collectedCount := collectedCount + 1
 
-    if enable15m
+    if enable15m and timeframe.in_seconds() < timeframe.in_seconds("15")
+        [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "15", f_extract_previous_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
+        bool isNewPivot = not na(pivotTime) and (na(last15mPivotTime) or pivotTime != last15mPivotTime)
+        if isNewPivot
+            f_append_pivot_evidence_with_cap(pivotEvidence, PivotEvidence.new(pivotPrice, pivotTime, TIMEFRAME_ID_15M, pivotSide, sourceAtr, volumeRatio), maxEvidenceCount)
+            last15mPivotTime := pivotTime
+            collectedCount := collectedCount + 1
+    else if enable15m and timeframe.in_seconds() > timeframe.in_seconds("15")
         [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "15", f_extract_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
         bool isNewPivot = not na(pivotTime) and (na(last15mPivotTime) or pivotTime != last15mPivotTime)
         if isNewPivot
@@ -38,7 +50,14 @@ f_collect_mtf_pivots(pivotEvidence, enable1m, enable15m, enable1h, enable4h, ena
             last15mPivotTime := pivotTime
             collectedCount := collectedCount + 1
 
-    if enable1h
+    if enable1h and timeframe.in_seconds() < timeframe.in_seconds("60")
+        [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "60", f_extract_previous_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
+        bool isNewPivot = not na(pivotTime) and (na(last1hPivotTime) or pivotTime != last1hPivotTime)
+        if isNewPivot
+            f_append_pivot_evidence_with_cap(pivotEvidence, PivotEvidence.new(pivotPrice, pivotTime, TIMEFRAME_ID_1H, pivotSide, sourceAtr, volumeRatio), maxEvidenceCount)
+            last1hPivotTime := pivotTime
+            collectedCount := collectedCount + 1
+    else if enable1h and timeframe.in_seconds() > timeframe.in_seconds("60")
         [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "60", f_extract_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
         bool isNewPivot = not na(pivotTime) and (na(last1hPivotTime) or pivotTime != last1hPivotTime)
         if isNewPivot
@@ -46,7 +65,14 @@ f_collect_mtf_pivots(pivotEvidence, enable1m, enable15m, enable1h, enable4h, ena
             last1hPivotTime := pivotTime
             collectedCount := collectedCount + 1
 
-    if enable4h
+    if enable4h and timeframe.in_seconds() < timeframe.in_seconds("240")
+        [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "240", f_extract_previous_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
+        bool isNewPivot = not na(pivotTime) and (na(last4hPivotTime) or pivotTime != last4hPivotTime)
+        if isNewPivot
+            f_append_pivot_evidence_with_cap(pivotEvidence, PivotEvidence.new(pivotPrice, pivotTime, TIMEFRAME_ID_4H, pivotSide, sourceAtr, volumeRatio), maxEvidenceCount)
+            last4hPivotTime := pivotTime
+            collectedCount := collectedCount + 1
+    else if enable4h and timeframe.in_seconds() > timeframe.in_seconds("240")
         [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "240", f_extract_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
         bool isNewPivot = not na(pivotTime) and (na(last4hPivotTime) or pivotTime != last4hPivotTime)
         if isNewPivot
@@ -54,7 +80,14 @@ f_collect_mtf_pivots(pivotEvidence, enable1m, enable15m, enable1h, enable4h, ena
             last4hPivotTime := pivotTime
             collectedCount := collectedCount + 1
 
-    if enableDaily
+    if enableDaily and timeframe.in_seconds() < timeframe.in_seconds("D")
+        [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "D", f_extract_previous_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
+        bool isNewPivot = not na(pivotTime) and (na(lastDailyPivotTime) or pivotTime != lastDailyPivotTime)
+        if isNewPivot
+            f_append_pivot_evidence_with_cap(pivotEvidence, PivotEvidence.new(pivotPrice, pivotTime, TIMEFRAME_ID_D, pivotSide, sourceAtr, volumeRatio), maxEvidenceCount)
+            lastDailyPivotTime := pivotTime
+            collectedCount := collectedCount + 1
+    else if enableDaily and timeframe.in_seconds() > timeframe.in_seconds("D")
         [isConfirmed, pivotPrice, pivotTime, pivotSide, sourceAtr, volumeRatio] = request.security(syminfo.tickerid, "D", f_extract_confirmed_pivot(atrPeriod, pivotStrength), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
         bool isNewPivot = not na(pivotTime) and (na(lastDailyPivotTime) or pivotTime != lastDailyPivotTime)
         if isNewPivot
