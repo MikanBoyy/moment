@@ -1,0 +1,108 @@
+f_capture_structure_zones(candidates, zones, float atr, int pivotStrength, int activeZoneMaxAgeHours, float previousHigh, float previousLow, int direction) =>
+    int candidateIndex = array.size(candidates) - 1
+    while candidateIndex >= 0
+        StructureZoneCandidate candidate = array.get(candidates, candidateIndex)
+        if candidate.pivotBar < bar_index - pivotStrength
+            array.remove(candidates, candidateIndex)
+        candidateIndex := candidateIndex - 1
+    if not na(atr) and atr > 0 and array.size(zones) > 0
+        for zoneIndex = 0 to array.size(zones) - 1
+            LiquidityZone zone = array.get(zones, zoneIndex)
+            bool eligible = zone.state == ZONE_STATE_ACTIVE and time - zone.createdTime < activeZoneMaxAgeHours * 3600000
+            if eligible and direction == 1 and zone.role == ZONE_ROLE_SUPPORT and not na(previousHigh) and low <= zone.topPrice and high >= zone.bottomPrice
+                array.push(candidates, StructureZoneCandidate.new(bar_index, 1, low, zone.topPrice, zone.bottomPrice, atr, zone.score, previousHigh))
+            if eligible and direction == -1 and zone.role == ZONE_ROLE_RESISTANCE and not na(previousLow) and high >= zone.bottomPrice and low <= zone.topPrice
+                array.push(candidates, StructureZoneCandidate.new(bar_index, -1, high, zone.topPrice, zone.bottomPrice, atr, zone.score, previousLow))
+
+f_update_market_structure(MarketStructureState state, candidates, int rawStructure, int pivotStrength, float bufferAtr, int maxWaitBars, float previousHigh, float previousLow, float previousChartAtr) =>
+    float pivotHigh = ta.pivothigh(high, pivotStrength, pivotStrength)
+    float pivotLow = ta.pivotlow(low, pivotStrength, pivotStrength)
+    if barstate.isconfirmed
+        bool ended = false
+        int checkedDirection = state.direction != 0 ? state.direction : rawStructure != state.blockedDirection ? rawStructure : 0
+        if checkedDirection != 0
+            bool hasProtectedZone = not na(state.protectedZone)
+            float referencePrice = hasProtectedZone ? (checkedDirection == 1 ? state.protectedZone.bottomPrice : state.protectedZone.topPrice) : (checkedDirection == 1 ? previousLow : previousHigh)
+            float referenceAtr = hasProtectedZone ? state.protectedZone.atr : previousChartAtr
+            bool available = not na(referencePrice) and not na(referenceAtr) and referenceAtr > 0
+            bool crossed = available and (checkedDirection == 1 ? close < referencePrice : close > referencePrice)
+            bool broken = available and (checkedDirection == 1 ? close < referencePrice - referenceAtr * bufferAtr : close > referencePrice + referenceAtr * bufferAtr)
+            state.warning := crossed and not broken
+            if broken
+                state.endedDirection := checkedDirection
+                state.blockedDirection := checkedDirection
+                state.direction := 0
+                state.protectedZone := na
+                state.pendingZone := na
+                state.pendingBreakout := false
+                state.warning := false
+                array.clear(candidates)
+                ended := true
+        if not ended
+            if state.blockedDirection != 0 and rawStructure == 0
+                state.blockedDirection := 0
+            if state.direction == 0 and rawStructure != 0 and rawStructure != state.blockedDirection
+                state.direction := rawStructure
+                state.endedDirection := 0
+            else if state.direction != 0 and na(state.protectedZone) and rawStructure == -state.direction
+                state.direction := rawStructure
+                state.pendingZone := na
+                state.pendingBreakout := false
+                array.clear(candidates)
+                float newReference = state.direction == 1 ? previousLow : previousHigh
+                bool available = not na(newReference) and not na(previousChartAtr) and previousChartAtr > 0
+                bool crossed = available and (state.direction == 1 ? close < newReference : close > newReference)
+                bool broken = available and (state.direction == 1 ? close < newReference - previousChartAtr * bufferAtr : close > newReference + previousChartAtr * bufferAtr)
+                state.warning := crossed and not broken
+                if broken
+                    state.endedDirection := 0
+                    state.blockedDirection := state.direction
+                    state.direction := 0
+                    state.warning := false
+            if not na(state.pendingZone)
+                StructureZoneCandidate pending = state.pendingZone
+                bool expired = bar_index - pending.pivotBar > maxWaitBars
+                bool broken = state.direction == 1 ? close < pending.bottomPrice - pending.atr * bufferAtr : close > pending.topPrice + pending.atr * bufferAtr
+                if expired or broken or pending.direction != state.direction
+                    state.pendingZone := na
+                    state.pendingBreakout := false
+                else
+                    state.pendingBreakout := state.pendingBreakout or (state.direction == 1 ? close > pending.breakoutPrice : close < pending.breakoutPrice)
+                    if state.pendingBreakout
+                        state.protectedZone := pending
+                        state.pendingZone := na
+                        state.pendingBreakout := false
+            bool confirmedPivot = state.direction == 1 ? not na(pivotLow) : state.direction == -1 ? not na(pivotHigh) : false
+            if confirmedPivot and array.size(candidates) > 0
+                StructureZoneCandidate best = na
+                bool bestBreakout = false
+                for candidateIndex = 0 to array.size(candidates) - 1
+                    StructureZoneCandidate candidate = array.get(candidates, candidateIndex)
+                    if candidate.pivotBar == bar_index - pivotStrength and candidate.direction == state.direction and bar_index - candidate.pivotBar <= maxWaitBars
+                        bool valid = true
+                        bool breakout = false
+                        for offset = 0 to pivotStrength
+                            bool broken = state.direction == 1 ? close[offset] < candidate.bottomPrice - candidate.atr * bufferAtr : close[offset] > candidate.topPrice + candidate.atr * bufferAtr
+                            valid := valid and not broken
+                            if offset < pivotStrength
+                                breakout := breakout or (state.direction == 1 ? close[offset] > candidate.breakoutPrice : close[offset] < candidate.breakoutPrice)
+                        if not na(state.protectedZone)
+                            float candidateBreakLevel = state.direction == 1 ? candidate.bottomPrice - candidate.atr * bufferAtr : candidate.topPrice + candidate.atr * bufferAtr
+                            float protectedBreakLevel = state.direction == 1 ? state.protectedZone.bottomPrice - state.protectedZone.atr * bufferAtr : state.protectedZone.topPrice + state.protectedZone.atr * bufferAtr
+                            valid := valid and (state.direction == 1 ? candidate.pivotPrice > state.protectedZone.pivotPrice and candidate.bottomPrice >= state.protectedZone.bottomPrice and candidateBreakLevel >= protectedBreakLevel : candidate.pivotPrice < state.protectedZone.pivotPrice and candidate.topPrice <= state.protectedZone.topPrice and candidateBreakLevel <= protectedBreakLevel)
+                        bool better = na(best) or candidate.score > best.score
+                        if not na(best) and candidate.score == best.score
+                            better := candidate.bottomPrice < best.bottomPrice or (candidate.bottomPrice == best.bottomPrice and candidate.topPrice < best.topPrice)
+                        if valid and better
+                            best := candidate
+                            bestBreakout := breakout
+                if not na(best)
+                    if bestBreakout
+                        state.protectedZone := best
+                        state.pendingZone := na
+                        state.pendingBreakout := false
+                    else
+                        state.pendingZone := best
+                        state.pendingBreakout := false
+            if state.direction != 0 and not na(state.protectedZone)
+                state.warning := state.direction == 1 ? close < state.protectedZone.bottomPrice : close > state.protectedZone.topPrice

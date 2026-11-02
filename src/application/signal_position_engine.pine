@@ -1,0 +1,38 @@
+f_update_signal_position(SignalPositionState state, bool bullishSignal, bool bearishSignal, SignalZoneCandidate bullishZone, SignalZoneCandidate bearishZone, zones, bool enableExitSignals, float bufferAtr, int confirmationBars, int activeZoneMaxAgeHours) =>
+    bool enterBullish = false
+    bool enterBearish = false
+    bool exitBullish = false
+    bool exitBearish = false
+    bool profitBullish = false
+    bool profitBearish = false
+    bool reverseBullish = false
+    bool reverseBearish = false
+    if barstate.isconfirmed
+        int previousDirection = state.direction
+        if previousDirection != ZONE_ROLE_NEUTRAL
+            bool breached = enableExitSignals and not na(state.stopLevel) and (previousDirection == ZONE_ROLE_SUPPORT ? close < state.stopLevel : close > state.stopLevel)
+            state.consecutiveBreaks := breached ? state.consecutiveBreaks + 1 : 0
+            bool stopHit = breached and state.consecutiveBreaks >= confirmationBars
+            bool profitHit = not na(state.profitTarget) and (previousDirection == ZONE_ROLE_SUPPORT ? high >= state.profitTarget : low <= state.profitTarget)
+            bool oppositeSignal = previousDirection == ZONE_ROLE_SUPPORT ? bearishSignal : bullishSignal
+            if stopHit or profitHit or oppositeSignal
+                exitBullish := stopHit and previousDirection == ZONE_ROLE_SUPPORT
+                exitBearish := stopHit and previousDirection == ZONE_ROLE_RESISTANCE
+                profitBullish := not stopHit and profitHit and previousDirection == ZONE_ROLE_SUPPORT
+                profitBearish := not stopHit and profitHit and previousDirection == ZONE_ROLE_RESISTANCE
+                reverseBullish := not stopHit and not profitHit and oppositeSignal and previousDirection == ZONE_ROLE_SUPPORT
+                reverseBearish := not stopHit and not profitHit and oppositeSignal and previousDirection == ZONE_ROLE_RESISTANCE
+                state.direction := ZONE_ROLE_NEUTRAL
+                state.stopLevel := na
+                state.profitTarget := na
+                state.consecutiveBreaks := 0
+        else if bullishSignal != bearishSignal
+            int direction = bullishSignal ? ZONE_ROLE_SUPPORT : ZONE_ROLE_RESISTANCE
+            SignalZoneCandidate zone = bullishSignal ? bullishZone : bearishZone
+            state.direction := direction
+            state.stopLevel := na(zone) ? na : direction == ZONE_ROLE_SUPPORT ? math.min(zone.bottomPrice, zone.pivotPrice) - zone.atr * bufferAtr : math.max(zone.topPrice, zone.pivotPrice) + zone.atr * bufferAtr
+            state.profitTarget := f_find_profit_target(zones, direction, close, time, activeZoneMaxAgeHours)
+            state.consecutiveBreaks := 0
+            enterBullish := bullishSignal
+            enterBearish := bearishSignal
+    [enterBullish, enterBearish, exitBullish, exitBearish, profitBullish, profitBearish, reverseBullish, reverseBearish]

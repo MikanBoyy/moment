@@ -18,3 +18,39 @@ type LiquidityZone
     int timeframeMask
     float score
     int lastEvidenceTime
+
+type SignalZoneCandidate
+    int pivotBar
+    int direction
+    float pivotPrice
+    float topPrice
+    float bottomPrice
+    int role
+    float score
+    int timeframeMask
+    float atr
+
+type SignalPositionState
+    int direction
+    float stopLevel
+    float profitTarget
+    int consecutiveBreaks
+
+type StructureZoneCandidate
+    int pivotBar
+    int direction
+    float pivotPrice
+    float topPrice
+    float bottomPrice
+    float atr
+    float score
+    float breakoutPrice
+
+type MarketStructureState
+    int direction
+    int blockedDirection
+    int endedDirection
+    bool warning
+    StructureZoneCandidate protectedZone
+    StructureZoneCandidate pendingZone
+    bool pendingBreakout

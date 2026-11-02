@@ -1,0 +1,13 @@
+f_find_profit_target(zones, int direction, float referencePrice, int evaluationTime, int activeZoneMaxAgeHours) =>
+    float target = na
+    if array.size(zones) > 0
+        for zoneIndex = 0 to array.size(zones) - 1
+            LiquidityZone zone = array.get(zones, zoneIndex)
+            bool active = zone.state == ZONE_STATE_ACTIVE and evaluationTime - zone.createdTime < activeZoneMaxAgeHours * 3600000
+            bool opposingRole = zone.role == ZONE_ROLE_NEUTRAL or (direction == ZONE_ROLE_SUPPORT ? zone.role == ZONE_ROLE_RESISTANCE : zone.role == ZONE_ROLE_SUPPORT)
+            float boundary = direction == ZONE_ROLE_SUPPORT ? zone.bottomPrice : zone.topPrice
+            bool ahead = direction == ZONE_ROLE_SUPPORT ? boundary > referencePrice : boundary < referencePrice
+            bool closer = na(target) or (direction == ZONE_ROLE_SUPPORT ? boundary < target : boundary > target)
+            if active and opposingRole and ahead and closer
+                target := boundary
+    target

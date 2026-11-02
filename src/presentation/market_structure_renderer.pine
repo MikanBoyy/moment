@@ -1,0 +1,28 @@
+var table marketStructureTable = table.new(position.top_left, 2, 6, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+if barstate.islast
+    table.clear(marketStructureTable, 0, 0, 1, 5)
+    if showMarketStructure
+        bool hasProtectedZone = not na(structureState.protectedZone)
+        float fallbackReference = structureState.direction == 1 ? structureLatestLow[1] : structureState.direction == -1 ? structureLatestHigh[1] : na
+        bool fallbackAvailable = not na(fallbackReference) and not na(previousStructureChartAtr) and previousStructureChartAtr > 0
+        string risingText = structureState.warning ? (hasProtectedZone ? "上昇・帯割れ注意" : "上昇・安値割れ注意") : hasProtectedZone ? "上昇" : fallbackAvailable ? "上昇・ピボット基準" : "上昇・基準不足"
+        string fallingText = structureState.warning ? (hasProtectedZone ? "下降・帯抜け注意" : "下降・高値抜け注意") : hasProtectedZone ? "下降" : fallbackAvailable ? "下降・ピボット基準" : "下降・基準不足"
+        string structureText = not supportedSignalChart ? "通常の時間足のみ" : structureState.direction == 1 ? risingText : structureState.direction == -1 ? fallingText : structureState.endedDirection == 1 ? "上昇終了候補" : structureState.endedDirection == -1 ? "下降終了候補" : "判定保留"
+        string highText = na(structureLatestHigh) ? "-" : (structureHighDirection == 1 ? "HH" : structureHighDirection == -1 ? "LH" : "未判定・同値") + " / " + str.tostring(structureLatestHigh, format.mintick)
+        string lowText = na(structureLatestLow) ? "-" : (structureLowDirection == 1 ? "HL" : structureLowDirection == -1 ? "LL" : "未判定・同値") + " / " + str.tostring(structureLatestLow, format.mintick)
+        string protectedText = na(structureState.protectedZone) ? "なし" : str.tostring(structureState.protectedZone.bottomPrice, format.mintick) + " - " + str.tostring(structureState.protectedZone.topPrice, format.mintick)
+        string pendingText = na(structureState.pendingZone) ? "なし" : str.tostring(structureState.pendingZone.bottomPrice, format.mintick) + " - " + str.tostring(structureState.pendingZone.topPrice, format.mintick)
+        float fallbackBreakLevel = fallbackAvailable ? fallbackReference + (structureState.direction == 1 ? -1 : 1) * previousStructureChartAtr * structureBreakBufferAtr : na
+        string fallbackText = structureState.direction == 0 ? "-" : hasProtectedZone ? "基準帯を使用" : fallbackAvailable ? str.tostring(fallbackReference, format.mintick) + " / 終了 " + str.tostring(fallbackBreakLevel, format.mintick) : "利用不可"
+        table.cell(marketStructureTable, 0, 0, "市場構造", text_color = color.white)
+        table.cell(marketStructureTable, 1, 0, structureText, text_color = color.white)
+        table.cell(marketStructureTable, 0, 1, "直近高値", text_color = color.white)
+        table.cell(marketStructureTable, 1, 1, supportedSignalChart ? highText : "-", text_color = color.white)
+        table.cell(marketStructureTable, 0, 2, "直近安値", text_color = color.white)
+        table.cell(marketStructureTable, 1, 2, supportedSignalChart ? lowText : "-", text_color = color.white)
+        table.cell(marketStructureTable, 0, 3, "基準帯", text_color = color.white)
+        table.cell(marketStructureTable, 1, 3, supportedSignalChart ? protectedText : "-", text_color = color.white)
+        table.cell(marketStructureTable, 0, 4, "突破待ち帯", text_color = color.white)
+        table.cell(marketStructureTable, 1, 4, supportedSignalChart ? pendingText : "-", text_color = color.white)
+        table.cell(marketStructureTable, 0, 5, "代替基準", text_color = color.white)
+        table.cell(marketStructureTable, 1, 5, supportedSignalChart ? fallbackText : "-", text_color = color.white)

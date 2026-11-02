@@ -1,0 +1,28 @@
+f_detect_rsi_divergence(rsiPeriod, leftBars, rightBars, minBars, maxBars, oversold, overbought, requireRsiExtreme) =>
+    float rsi = ta.rsi(close, rsiPeriod)
+    float pivotLow = ta.pivotlow(low, leftBars, rightBars)
+    float pivotHigh = ta.pivothigh(high, leftBars, rightBars)
+    var float previousLowPrice = na
+    var float previousLowRsi = na
+    var int previousLowBar = na
+    var float previousHighPrice = na
+    var float previousHighRsi = na
+    var int previousHighBar = na
+    bool bullish = false
+    bool bearish = false
+    if barstate.isconfirmed
+        int pivotBar = bar_index - rightBars
+        float pivotRsi = rsi[rightBars]
+        if not na(pivotLow)
+            int interval = pivotBar - previousLowBar
+            bullish := not na(previousLowBar) and not na(previousLowRsi) and not na(pivotRsi) and interval >= minBars and interval <= maxBars and pivotLow < previousLowPrice and pivotRsi > previousLowRsi and (not requireRsiExtreme or previousLowRsi <= oversold)
+            previousLowPrice := pivotLow
+            previousLowRsi := pivotRsi
+            previousLowBar := pivotBar
+        if not na(pivotHigh)
+            int interval = pivotBar - previousHighBar
+            bearish := not na(previousHighBar) and not na(previousHighRsi) and not na(pivotRsi) and interval >= minBars and interval <= maxBars and pivotHigh > previousHighPrice and pivotRsi < previousHighRsi and (not requireRsiExtreme or previousHighRsi >= overbought)
+            previousHighPrice := pivotHigh
+            previousHighRsi := pivotRsi
+            previousHighBar := pivotBar
+    [bullish, bearish]

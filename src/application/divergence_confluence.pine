@@ -1,0 +1,43 @@
+f_has_signal_htf_evidence(mask) =>
+    mask % 8 >= 4 or mask % 16 >= 8 or mask % 32 >= 16
+
+f_capture_signal_zones(candidates, zones, atr, toleranceAtr, minScore, requireHtf, rightBars, activeZoneMaxAgeHours) =>
+    int candidateIndex = array.size(candidates) - 1
+    while candidateIndex >= 0
+        SignalZoneCandidate candidate = array.get(candidates, candidateIndex)
+        if candidate.pivotBar < bar_index - rightBars
+            array.remove(candidates, candidateIndex)
+        candidateIndex := candidateIndex - 1
+    if not na(atr) and atr > 0 and array.size(zones) > 0
+        float tolerance = atr * toleranceAtr
+        for zoneIndex = 0 to array.size(zones) - 1
+            LiquidityZone zone = array.get(zones, zoneIndex)
+            bool eligible = zone.state == ZONE_STATE_ACTIVE and time - zone.createdTime < activeZoneMaxAgeHours * 3600000 and zone.score >= minScore and (not requireHtf or f_has_signal_htf_evidence(zone.timeframeMask))
+            if eligible
+                bool lowNear = low >= zone.bottomPrice - tolerance and low <= zone.topPrice + tolerance
+                bool highNear = high >= zone.bottomPrice - tolerance and high <= zone.topPrice + tolerance
+                if lowNear and (zone.role == ZONE_ROLE_SUPPORT or zone.role == ZONE_ROLE_NEUTRAL)
+                    array.push(candidates, SignalZoneCandidate.new(bar_index, ZONE_ROLE_SUPPORT, low, zone.topPrice, zone.bottomPrice, zone.role, zone.score, zone.timeframeMask, atr))
+                if highNear and (zone.role == ZONE_ROLE_RESISTANCE or zone.role == ZONE_ROLE_NEUTRAL)
+                    array.push(candidates, SignalZoneCandidate.new(bar_index, ZONE_ROLE_RESISTANCE, high, zone.topPrice, zone.bottomPrice, zone.role, zone.score, zone.timeframeMask, atr))
+
+f_find_confluent_signal_zone(candidates, direction, rightBars, invalidationBufferAtr) =>
+    SignalZoneCandidate best = na
+    float bestDistance = na
+    if array.size(candidates) > 0
+        for candidateIndex = 0 to array.size(candidates) - 1
+            SignalZoneCandidate candidate = array.get(candidates, candidateIndex)
+            if candidate.pivotBar == bar_index - rightBars and candidate.direction == direction
+                bool broken = false
+                for offset = 0 to rightBars
+                    float boundary = direction == ZONE_ROLE_SUPPORT ? candidate.bottomPrice - candidate.atr * invalidationBufferAtr : candidate.topPrice + candidate.atr * invalidationBufferAtr
+                    if direction == ZONE_ROLE_SUPPORT ? close[offset] < boundary : close[offset] > boundary
+                        broken := true
+                float distance = math.max(0.0, math.max(candidate.bottomPrice - candidate.pivotPrice, candidate.pivotPrice - candidate.topPrice))
+                bool better = na(best) or distance < bestDistance
+                if not na(best) and distance == bestDistance
+                    better := candidate.score > best.score or (candidate.score == best.score and (candidate.bottomPrice < best.bottomPrice or (candidate.bottomPrice == best.bottomPrice and candidate.topPrice < best.topPrice)))
+                if not broken and better
+                    best := candidate
+                    bestDistance := distance
+    best

@@ -4,8 +4,14 @@ indicator("moment", overlay = true, max_boxes_count = 100, max_lines_count = 120
 //#include "domain/constants.pine"
 //#include "domain/types.pine"
 //#include "domain/zigzag.pine"
+//#include "domain/rsi_divergence.pine"
+//#include "domain/market_structure.pine"
 //#include "application/mtf_pivot_collector.pine"
 //#include "application/liquidity_zone_engine.pine"
+//#include "application/divergence_confluence.pine"
+//#include "application/market_structure_engine.pine"
+//#include "application/profit_target.pine"
+//#include "application/signal_position_engine.pine"
 //#include "presentation/settings.pine"
 //#include "presentation/zone_renderer.pine"
 
@@ -13,6 +19,32 @@ var array<PivotEvidence> pivotEvidence = array.new<PivotEvidence>()
 var array<LiquidityZone> liquidityZones = array.new<LiquidityZone>()
 var array<ZoneRenderObjects> zoneRenderObjects = array.new<ZoneRenderObjects>()
 var label statusLabel = na
+var array<SignalZoneCandidate> signalZoneCandidates = array.new<SignalZoneCandidate>()
+var array<StructureZoneCandidate> structureZoneCandidates = array.new<StructureZoneCandidate>()
+var MarketStructureState structureState = MarketStructureState.new(0, 0, 0, false, na, na, false)
+var SignalPositionState signalPosition = SignalPositionState.new(ZONE_ROLE_NEUTRAL, na, na, 0)
+
+bool supportedSignalChart = chart.is_standard and (timeframe.isseconds or timeframe.isminutes or timeframe.isdaily or timeframe.isweekly or timeframe.ismonthly)
+[marketStructure, structureHighDirection, structureLowDirection, structureLatestHigh, structureLatestLow] = f_detect_market_structure(marketStructurePivotStrength)
+bool validSignalSettings = minDivergenceBars <= maxDivergenceBars
+bool hasHtfSource = enable1h or enable4h or enableDaily
+float commonAtr = timeframe.in_seconds() < timeframe.in_seconds("15") ? request.security(syminfo.tickerid, "15", ta.atr(atrPeriod)[1], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on) : timeframe.in_seconds() == timeframe.in_seconds("15") ? ta.atr(atrPeriod)[1] : request.security(syminfo.tickerid, "15", ta.atr(atrPeriod), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+float signalAtr = timeframe.in_seconds() > timeframe.in_seconds("15") ? commonAtr[1] : commonAtr
+float previousStructureChartAtr = ta.atr(atrPeriod)[1]
+if barstate.isconfirmed and supportedSignalChart
+	f_capture_structure_zones(structureZoneCandidates, liquidityZones, signalAtr, marketStructurePivotStrength, activeZoneMaxAgeHours, structureLatestHigh[1], structureLatestLow[1], structureState.direction)
+f_update_market_structure(structureState, structureZoneCandidates, supportedSignalChart ? marketStructure : 0, marketStructurePivotStrength, structureBreakBufferAtr, structureMaxWaitBars, structureLatestHigh[1], structureLatestLow[1], previousStructureChartAtr)
+[rawBullishDiv, rawBearishDiv] = f_detect_rsi_divergence(rsiPeriod, divergenceLeftBars, divergenceRightBars, minDivergenceBars, maxDivergenceBars, rsiOversoldLevel, rsiOverboughtLevel, requireRsiExtreme)
+SignalZoneCandidate bullishZone = na
+SignalZoneCandidate bearishZone = na
+if barstate.isconfirmed and enableDivSignals and supportedSignalChart and validSignalSettings and requireZoneMatch
+	f_capture_signal_zones(signalZoneCandidates, liquidityZones, signalAtr, zoneDistanceToleranceAtr, minSignalZoneScore, requireHigherTfEvidence, divergenceRightBars, activeZoneMaxAgeHours)
+	if rawBullishDiv
+		bullishZone := f_find_confluent_signal_zone(signalZoneCandidates, ZONE_ROLE_SUPPORT, divergenceRightBars, invalidationBufferAtr)
+	if rawBearishDiv
+		bearishZone := f_find_confluent_signal_zone(signalZoneCandidates, ZONE_ROLE_RESISTANCE, divergenceRightBars, invalidationBufferAtr)
+bool qualifiedBullishSignal = enableDivSignals and supportedSignalChart and validSignalSettings and rawBullishDiv and (not requireZoneMatch or not na(bullishZone))
+bool qualifiedBearishSignal = enableDivSignals and supportedSignalChart and validSignalSettings and rawBearishDiv and (not requireZoneMatch or not na(bearishZone))
 
 // 1分足ピボットは1分足でのみ完全な履歴を取得できる。上位チャートでは他の4時間足を維持する。
 bool canCollect1m = timeframe.isminutes and timeframe.multiplier == 1
@@ -20,7 +52,6 @@ bool collect1m = enable1m and canCollect1m
 int chartEvidenceCount = f_collect_chart_pivots(pivotEvidence, atrPeriod, pivotStrength, maxEvidenceCount)
 int mtfEvidenceCount = f_collect_mtf_pivots(pivotEvidence, collect1m, enable15m, enable1h, enable4h, enableDaily, atrPeriod, pivotStrength, maxEvidenceCount)
 int newEvidenceCount = chartEvidenceCount + mtfEvidenceCount
-float commonAtr = request.security(syminfo.tickerid, "15", ta.atr(atrPeriod), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
 if newEvidenceCount > 0 and not na(commonAtr)
 	int firstNewEvidenceIndex = math.max(0, array.size(pivotEvidence) - newEvidenceCount)
 	for evidenceIndex = firstNewEvidenceIndex to array.size(pivotEvidence) - 1
@@ -28,6 +59,12 @@ if newEvidenceCount > 0 and not na(commonAtr)
 		f_ingest_evidence(liquidityZones, evidence, commonAtr, clusterToleranceAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr, weight1m, weight15m, weight1h, weight4h, weightDaily, reactionBonus, volumeBonus, decayHours, maxZoneCount)
 if not na(commonAtr)
 	f_update_zone_states(liquidityZones, commonAtr, invalidationBufferAtr, activeZoneMaxAgeHours, invalidatedRetentionHours)
+[finalBullishSignal, finalBearishSignal, exitBullishSignal, exitBearishSignal, profitBullishSignal, profitBearishSignal, reverseBullishSignal, reverseBearishSignal] = f_update_signal_position(signalPosition, qualifiedBullishSignal, qualifiedBearishSignal, bullishZone, bearishZone, liquidityZones, enableExitSignals, exitBufferAtr, exitConfirmationBars, activeZoneMaxAgeHours)
+//#include "application/signal_performance.pine"
 if barstate.islast
 	int renderedCount = f_render_zones(liquidityZones, zoneRenderObjects, displayedZoneCount, minimumScore, displayOverlapThreshold, supportColor, resistanceColor, neutralColor, showDebugLabels)
 	statusLabel := f_render_status(statusLabel, array.size(pivotEvidence), array.size(liquidityZones), renderedCount, showStatus)
+
+//#include "presentation/trade_signal_renderer.pine"
+//#include "presentation/signal_renderer.pine"
+//#include "presentation/market_structure_renderer.pine"

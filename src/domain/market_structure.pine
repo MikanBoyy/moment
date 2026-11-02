@@ -1,0 +1,16 @@
+f_detect_market_structure(pivotStrength) =>
+    float pivotHigh = ta.pivothigh(high, pivotStrength, pivotStrength)
+    float pivotLow = ta.pivotlow(low, pivotStrength, pivotStrength)
+    var float latestHigh = na
+    var float latestLow = na
+    var int highDirection = 0
+    var int lowDirection = 0
+    if barstate.isconfirmed
+        if not na(pivotHigh)
+            highDirection := na(latestHigh) ? 0 : pivotHigh > latestHigh ? 1 : pivotHigh < latestHigh ? -1 : 0
+            latestHigh := pivotHigh
+        if not na(pivotLow)
+            lowDirection := na(latestLow) ? 0 : pivotLow > latestLow ? 1 : pivotLow < latestLow ? -1 : 0
+            latestLow := pivotLow
+    int structure = highDirection == 1 and lowDirection == 1 ? 1 : highDirection == -1 and lowDirection == -1 ? -1 : 0
+    [structure, highDirection, lowDirection, latestHigh, latestLow]
