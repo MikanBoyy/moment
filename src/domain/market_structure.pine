@@ -1,11 +1,13 @@
-f_detect_market_structure(pivotStrength) =>
+// pivotStrength の高値・安値ピボットを比較し、confirmed の場合だけ直近の状態を更新する。
+// 戻り値: [構造方向、高値方向、安値方向、直近高値、直近安値]。方向は上昇1、下降-1、未確定0。
+f_detect_market_structure(pivotStrength, bool confirmed) =>
     float pivotHigh = ta.pivothigh(high, pivotStrength, pivotStrength)
     float pivotLow = ta.pivotlow(low, pivotStrength, pivotStrength)
     var float latestHigh = na
     var float latestLow = na
     var int highDirection = 0
     var int lowDirection = 0
-    if barstate.isconfirmed
+    if confirmed
         if not na(pivotHigh)
             highDirection := na(latestHigh) ? 0 : pivotHigh > latestHigh ? 1 : pivotHigh < latestHigh ? -1 : 0
             latestHigh := pivotHigh

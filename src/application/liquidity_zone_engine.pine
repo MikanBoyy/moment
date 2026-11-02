@@ -1,43 +1,5 @@
-f_get_timeframe_weight(timeframeId, weight1m, weight15m, weight1h, weight4h, weightDaily) =>
-    float weight = weight1m
-    if timeframeId == TIMEFRAME_ID_5M
-        weight := (weight1m + weight15m) / 2.0
-    else if timeframeId == TIMEFRAME_ID_15M or timeframeId == TIMEFRAME_ID_CHART
-        weight := weight15m
-    else if timeframeId == TIMEFRAME_ID_1H
-        weight := weight1h
-    else if timeframeId == TIMEFRAME_ID_4H
-        weight := weight4h
-    else if timeframeId == TIMEFRAME_ID_D
-        weight := weightDaily
-    weight
-
-f_get_timeframe_mask(timeframeId) =>
-    int mask = 1
-    if timeframeId == TIMEFRAME_ID_15M
-        mask := 2
-    else if timeframeId == TIMEFRAME_ID_1H
-        mask := 4
-    else if timeframeId == TIMEFRAME_ID_4H
-        mask := 8
-    else if timeframeId == TIMEFRAME_ID_D
-        mask := 16
-    else if timeframeId == TIMEFRAME_ID_5M
-        mask := 32
-    else if timeframeId == TIMEFRAME_ID_CHART
-        mask := 64
-    mask
-
-f_merge_timeframe_mask(existingMask, incomingMask) =>
-    int mergedMask = existingMask
-    for bitIndex = 0 to 6
-        int bitValue = int(math.pow(2, bitIndex))
-        bool incomingIncludesBit = incomingMask % (bitValue * 2) >= bitValue
-        bool existingIncludesBit = mergedMask % (bitValue * 2) >= bitValue
-        if incomingIncludesBit and not existingIncludesBit
-            mergedMask := mergedMask + bitValue
-    mergedMask
-
+// zones の有効ゾーンから pivotPrice に近い最初の要素の添字を返す。なければ na。
+// clusterTolerancePrice は中心との距離、adjacentMergeDistancePrice は境界との距離の許容値。
 f_find_matching_zone(zones, pivotPrice, clusterTolerancePrice, adjacentMergeDistancePrice) =>
     int matchedIndex = na
     if array.size(zones) > 0
@@ -51,6 +13,7 @@ f_find_matching_zone(zones, pivotPrice, clusterTolerancePrice, adjacentMergeDist
                 matchedIndex := zoneIndex
     matchedIndex
 
+// zones が maxZoneCount を超えた場合、最小スコアの要素を1件削除する。
 f_trim_lowest_scoring_zone(zones, maxZoneCount) =>
     if array.size(zones) > maxZoneCount
         int lowestIndex = 0
@@ -62,7 +25,10 @@ f_trim_lowest_scoring_zone(zones, maxZoneCount) =>
                 lowestIndex := zoneIndex
         array.remove(zones, lowestIndex)
 
-f_merge_adjacent_active_zones(zones, commonAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr) =>
+// 近接する有効 zones を繰り返し結合し、zones を更新する。
+// commonAtr と adjacentMergeDistanceAtr は結合距離、minimumZoneWidthAtr/maximumZoneWidthAtr は幅の制約。
+f_merge_adjacent_active_zones(
+    zones, commonAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr) =>
     bool mergedAnyZone = true
     while mergedAnyZone and array.size(zones) > 1
         mergedAnyZone := false
@@ -98,7 +64,13 @@ f_merge_adjacent_active_zones(zones, commonAtr, adjacentMergeDistanceAtr, minimu
                 secondIndex := secondIndex + 1
             firstIndex := firstIndex + 1
 
-f_ingest_evidence(zones, evidence, commonAtr, clusterToleranceAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr, weight1m, weight15m, weight1h, weight4h, weightDaily, reactionBonus, volumeBonus, decayHours, maxZoneCount) =>
+// evidence を zones に反映し、新規作成または既存ゾーンの更新・結合・件数制限を行う。
+// commonAtr と各ATR倍率は距離・幅、weight 系と各 bonus はスコア、decayHours は時間減衰を制御する。
+// maxZoneCount はゾーン配列の上限。zones を直接変更する。
+f_ingest_evidence(
+    zones, evidence, commonAtr, clusterToleranceAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr,
+    maximumZoneWidthAtr, weight1m, weight15m, weight1h, weight4h, weightDaily, reactionBonus, volumeBonus,
+    decayHours, maxZoneCount) =>
     float comparisonAtr = math.max(commonAtr, evidence.sourceAtr)
     float tolerancePrice = comparisonAtr * clusterToleranceAtr
     float adjacentMergeDistancePrice = comparisonAtr * adjacentMergeDistanceAtr
@@ -141,7 +113,10 @@ f_ingest_evidence(zones, evidence, commonAtr, clusterToleranceAtr, adjacentMerge
     f_merge_adjacent_active_zones(zones, commonAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr)
     f_trim_lowest_scoring_zone(zones, maxZoneCount)
 
-f_update_zone_states(zones, commonAtr, invalidationBufferAtr, activeZoneMaxAgeHours, invalidatedRetentionHours) =>
+// zones を現在足で更新し、期限切れ削除、価格突破による無効化、無効後の保持期限切れ削除を行う。
+// commonAtr と invalidationBufferAtr は突破余裕幅、2つの Hours 引数は各状態の寿命。
+f_update_zone_states(
+    zones, commonAtr, invalidationBufferAtr, activeZoneMaxAgeHours, invalidatedRetentionHours) =>
     int zoneIndex = array.size(zones) - 1
     while zoneIndex >= 0
         LiquidityZone zone = array.get(zones, zoneIndex)

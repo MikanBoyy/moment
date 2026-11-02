@@ -1,0 +1,42 @@
+// timeframeId と各時間足の weight から証拠の重みを返す。5分足は1分・15分の平均。
+f_get_timeframe_weight(timeframeId, weight1m, weight15m, weight1h, weight4h, weightDaily) =>
+    float weight = weight1m
+    if timeframeId == TIMEFRAME_ID_5M
+        weight := (weight1m + weight15m) / 2.0
+    else if timeframeId == TIMEFRAME_ID_15M or timeframeId == TIMEFRAME_ID_CHART
+        weight := weight15m
+    else if timeframeId == TIMEFRAME_ID_1H
+        weight := weight1h
+    else if timeframeId == TIMEFRAME_ID_4H
+        weight := weight4h
+    else if timeframeId == TIMEFRAME_ID_D
+        weight := weightDaily
+    weight
+
+// timeframeId に対応する証拠ビットを返す。未対応IDは1分足のビットを使う。
+f_get_timeframe_mask(timeframeId) =>
+    int mask = 1
+    if timeframeId == TIMEFRAME_ID_15M
+        mask := 2
+    else if timeframeId == TIMEFRAME_ID_1H
+        mask := 4
+    else if timeframeId == TIMEFRAME_ID_4H
+        mask := 8
+    else if timeframeId == TIMEFRAME_ID_D
+        mask := 16
+    else if timeframeId == TIMEFRAME_ID_5M
+        mask := 32
+    else if timeframeId == TIMEFRAME_ID_CHART
+        mask := 64
+    mask
+
+// existingMask と incomingMask の下位7ビットの和集合を返す。
+f_merge_timeframe_mask(existingMask, incomingMask) =>
+    int mergedMask = existingMask
+    for bitIndex = 0 to 6
+        int bitValue = int(math.pow(2, bitIndex))
+        bool incomingIncludesBit = incomingMask % (bitValue * 2) >= bitValue
+        bool existingIncludesBit = mergedMask % (bitValue * 2) >= bitValue
+        if incomingIncludesBit and not existingIncludesBit
+            mergedMask := mergedMask + bitValue
+    mergedMask

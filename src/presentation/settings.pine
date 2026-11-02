@@ -42,6 +42,7 @@ bool showDebugLabels = input.bool(false, "スコアラベル", group = GROUP_DIS
 bool showStatus = input.bool(false, "集計ステータス", group = GROUP_DISPLAY)
 
 bool enableDivSignals = input.bool(true, "ダイバージェンスサインを有効化", group = GROUP_DIV)
+bool enableHtfStructureFilter = input.bool(true, "新規エントリーに上位足市場構造を適用", group = GROUP_DIV, tooltip = "直近確定済みの上位足が上昇ならBUY、下降ならSELLを許可します。判定保留・取得不可では見送ります。反対サインによる追跡終了と追加サインには適用しません。")
 int rsiPeriod = input.int(14, "RSI期間", minval = 1, group = GROUP_DIV)
 int divergenceLeftBars = input.int(4, "価格ピボット左側バー数", minval = 2, maxval = 10, group = GROUP_DIV)
 int divergenceRightBars = input.int(2, "価格ピボット右側確認バー数", minval = 1, maxval = 5, group = GROUP_DIV)
@@ -63,6 +64,7 @@ int exitConfirmationBars = input.int(2, "撤退判定の連続確定バー数", 
 
 bool showMarketStructure = input.bool(true, "市場構造を表示", group = GROUP_STRUCTURE)
 bool showStructureSignals = input.bool(true, "市場構造の売買サインを表示", group = GROUP_STRUCTURE, tooltip = "反転・利確・撤退サインとエントリー時の対向帯参考線の表示を切り替えます。追跡とアラートには影響しません。")
+bool enableStructureHtfFilter = input.bool(true, "構造エントリーに上位足市場構造を適用", group = GROUP_STRUCTURE, tooltip = "直近確定済みの上位足が上昇なら構造BUY、下降なら構造SELLを許可します。判定保留・取得不可では見送り、保有中の終了判定には適用しません。")
 bool colorStructureBars = input.bool(true, "市場構造でバーを着色", group = GROUP_STRUCTURE, tooltip = "確定済みの市場構造に応じて着色します。終了候補・判定保留は中立色です。")
 color structureBullishBarColor = input.color(#26A69A, "上昇構造のバー色", group = GROUP_STRUCTURE)
 color structureBearishBarColor = input.color(#EF5350, "下降構造のバー色", group = GROUP_STRUCTURE)

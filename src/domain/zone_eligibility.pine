@@ -1,0 +1,4 @@
+// zone が評価時刻 evaluationTime に有効かを判定する。maxAgeHours は作成からの寿命。
+// 戻り値: ACTIVE かつ経過時間が寿命未満なら true。期限ちょうどは無効。
+f_is_zone_active_at(LiquidityZone zone, int evaluationTime, int maxAgeHours) =>
+    zone.state == ZONE_STATE_ACTIVE and evaluationTime - zone.createdTime < maxAgeHours * 3600000

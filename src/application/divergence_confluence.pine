@@ -1,7 +1,12 @@
+// 時間足の証拠 mask に1時間・4時間・日足のいずれかが含まれるかを返す。
 f_has_signal_htf_evidence(mask) =>
     mask % 8 >= 4 or mask % 16 >= 8 or mask % 32 >= 16
 
-f_capture_signal_zones(candidates, zones, atr, toleranceAtr, minScore, requireHtf, rightBars, activeZoneMaxAgeHours) =>
+// 古い candidates を除去し、現在足の高安値に近い適格 zones をシグナル候補として追加する。
+// atr/toleranceAtr は距離、minScore と requireHtf は証拠条件、rightBars は候補の保持期間。
+// activeZoneMaxAgeHours はゾーン寿命。candidates を直接変更する。
+f_capture_signal_zones(
+    candidates, zones, atr, toleranceAtr, minScore, requireHtf, rightBars, activeZoneMaxAgeHours) =>
     int candidateIndex = array.size(candidates) - 1
     while candidateIndex >= 0
         SignalZoneCandidate candidate = array.get(candidates, candidateIndex)
@@ -12,7 +17,7 @@ f_capture_signal_zones(candidates, zones, atr, toleranceAtr, minScore, requireHt
         float tolerance = atr * toleranceAtr
         for zoneIndex = 0 to array.size(zones) - 1
             LiquidityZone zone = array.get(zones, zoneIndex)
-            bool eligible = zone.state == ZONE_STATE_ACTIVE and time - zone.createdTime < activeZoneMaxAgeHours * 3600000 and zone.score >= minScore and (not requireHtf or f_has_signal_htf_evidence(zone.timeframeMask))
+            bool eligible = f_is_zone_active_at(zone, time, activeZoneMaxAgeHours) and zone.score >= minScore and (not requireHtf or f_has_signal_htf_evidence(zone.timeframeMask))
             if eligible
                 bool lowNear = low >= zone.bottomPrice - tolerance and low <= zone.topPrice + tolerance
                 bool highNear = high >= zone.bottomPrice - tolerance and high <= zone.topPrice + tolerance
@@ -21,6 +26,8 @@ f_capture_signal_zones(candidates, zones, atr, toleranceAtr, minScore, requireHt
                 if highNear and (zone.role == ZONE_ROLE_RESISTANCE or zone.role == ZONE_ROLE_NEUTRAL)
                     array.push(candidates, SignalZoneCandidate.new(bar_index, ZONE_ROLE_RESISTANCE, high, zone.topPrice, zone.bottomPrice, zone.role, zone.score, zone.timeframeMask, atr))
 
+// candidates から direction と確定ピボット足に一致し、無効化されていない最良候補を返す。
+// rightBars はピボットの確定幅、invalidationBufferAtr は終値突破を判定するATR倍率。該当なしは na。
 f_find_confluent_signal_zone(candidates, direction, rightBars, invalidationBufferAtr) =>
     SignalZoneCandidate best = na
     float bestDistance = na

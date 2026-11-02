@@ -1,4 +1,9 @@
-f_capture_structure_zones(candidates, zones, float atr, int pivotStrength, int activeZoneMaxAgeHours, float previousHigh, float previousLow, int direction) =>
+// 期限切れ候補を除去し、direction に対応する有効 zones と現在足が重なる場合に candidates へ追加する。
+// atr と pivotStrength は候補の評価・保持設定、previousHigh/previousLow はブレイク基準。
+// activeZoneMaxAgeHours はゾーン寿命。candidates を直接変更する。
+f_capture_structure_zones(
+    candidates, zones, float atr, int pivotStrength, int activeZoneMaxAgeHours,
+    float previousHigh, float previousLow, int direction) =>
     int candidateIndex = array.size(candidates) - 1
     while candidateIndex >= 0
         StructureZoneCandidate candidate = array.get(candidates, candidateIndex)
@@ -8,16 +13,21 @@ f_capture_structure_zones(candidates, zones, float atr, int pivotStrength, int a
     if not na(atr) and atr > 0 and array.size(zones) > 0
         for zoneIndex = 0 to array.size(zones) - 1
             LiquidityZone zone = array.get(zones, zoneIndex)
-            bool eligible = zone.state == ZONE_STATE_ACTIVE and time - zone.createdTime < activeZoneMaxAgeHours * 3600000
+            bool eligible = f_is_zone_active_at(zone, time, activeZoneMaxAgeHours)
             if eligible and direction == 1 and zone.role == ZONE_ROLE_SUPPORT and not na(previousHigh) and low <= zone.topPrice and high >= zone.bottomPrice
                 array.push(candidates, StructureZoneCandidate.new(bar_index, 1, low, zone.topPrice, zone.bottomPrice, atr, zone.score, previousHigh))
             if eligible and direction == -1 and zone.role == ZONE_ROLE_RESISTANCE and not na(previousLow) and high >= zone.bottomPrice and low <= zone.topPrice
                 array.push(candidates, StructureZoneCandidate.new(bar_index, -1, high, zone.topPrice, zone.bottomPrice, atr, zone.score, previousLow))
 
-f_update_market_structure(MarketStructureState state, candidates, int rawStructure, int pivotStrength, float bufferAtr, int maxWaitBars, float previousHigh, float previousLow, float previousChartAtr) =>
+// confirmed の場合に rawStructure と candidates から構造の確立・保護・警戒・終了を更新する。
+// pivotStrength は確定幅、bufferAtr は終了余裕幅、maxWaitBars は候補待機上限。
+// previousHigh/previousLow と previousChartAtr は保護ゾーン未確立時の基準。state と candidates を変更する。
+f_update_market_structure(
+    MarketStructureState state, candidates, int rawStructure, int pivotStrength, float bufferAtr,
+    int maxWaitBars, float previousHigh, float previousLow, float previousChartAtr, bool confirmed) =>
     float pivotHigh = ta.pivothigh(high, pivotStrength, pivotStrength)
     float pivotLow = ta.pivotlow(low, pivotStrength, pivotStrength)
-    if barstate.isconfirmed
+    if confirmed
         bool ended = false
         int checkedDirection = state.direction != 0 ? state.direction : rawStructure != state.blockedDirection ? rawStructure : 0
         if checkedDirection != 0

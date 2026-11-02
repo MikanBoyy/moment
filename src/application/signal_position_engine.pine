@@ -1,4 +1,11 @@
-f_update_signal_position(SignalPositionState state, bool bullishSignal, bool bearishSignal, SignalZoneCandidate bullishZone, SignalZoneCandidate bearishZone, zones, bool enableExitSignals, bool enableAddSignals, float bufferAtr, int confirmationBars, int activeZoneMaxAgeHours) =>
+// 確定足でRSIシグナルの新規・終了・追加を判定し、state を更新する。
+// bullishSignal/bearishSignal は元シグナル、allow 系は新規入口だけの許可、各 Zone は損切り基準。
+// zones と activeZoneMaxAgeHours は利確目標、enable 系は終了・追加、bufferAtr と confirmationBars は損切り設定。
+// 戻り値: 強気・弱気の順に、新規、損切り、利確、反対シグナル終了、ナンピン、ピラミッディングの各フラグ。
+f_update_signal_position(
+    SignalPositionState state, bool bullishSignal, bool bearishSignal, bool allowBullishEntry, bool allowBearishEntry,
+    SignalZoneCandidate bullishZone, SignalZoneCandidate bearishZone, zones, bool enableExitSignals, bool enableAddSignals,
+    float bufferAtr, int confirmationBars, int activeZoneMaxAgeHours) =>
     bool enterBullish = false
     bool enterBearish = false
     bool exitBullish = false
@@ -39,7 +46,7 @@ f_update_signal_position(SignalPositionState state, bool bullishSignal, bool bea
                 averageDownBearish := sameDirectionSignal and unfavorable and previousDirection == ZONE_ROLE_RESISTANCE
                 pyramidBullish := sameDirectionSignal and favorable and previousDirection == ZONE_ROLE_SUPPORT
                 pyramidBearish := sameDirectionSignal and favorable and previousDirection == ZONE_ROLE_RESISTANCE
-        else if bullishSignal != bearishSignal
+        else if bullishSignal != bearishSignal and (bullishSignal ? allowBullishEntry : allowBearishEntry)
             int direction = bullishSignal ? ZONE_ROLE_SUPPORT : ZONE_ROLE_RESISTANCE
             SignalZoneCandidate zone = bullishSignal ? bullishZone : bearishZone
             state.direction := direction

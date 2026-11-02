@@ -1,0 +1,38 @@
+// 要求先の時間足に独立したゾーン・構造状態を保持し、直前の確定済み構造方向を返す。
+// 各設定値はグローバル入力を参照する。request.security 内で評価する。
+f_higher_timeframe_structure() =>
+	var array<PivotEvidence> evidence = array.new<PivotEvidence>()
+	var array<LiquidityZone> zones = array.new<LiquidityZone>()
+	var array<StructureZoneCandidate> candidates = array.new<StructureZoneCandidate>()
+	var MarketStructureState state = MarketStructureState.new(0, 0, 0, false, na, na, false)
+	[rawStructure, highDirection, lowDirection, latestHigh, latestLow] =
+	  f_detect_market_structure(marketStructurePivotStrength, true)
+	float atr = timeframe.in_seconds() < timeframe.in_seconds("15") ?
+	  request.security(syminfo.tickerid, "15", ta.atr(atrPeriod)[1], gaps = barmerge.gaps_off,
+	  lookahead = barmerge.lookahead_on) : timeframe.in_seconds() == timeframe.in_seconds("15") ? ta.atr(atrPeriod)[1] :
+	  request.security(syminfo.tickerid, "15", ta.atr(atrPeriod), gaps = barmerge.gaps_off,
+	  lookahead = barmerge.lookahead_off)
+	float candidateAtr = timeframe.in_seconds() > timeframe.in_seconds("15") ? atr[1] : atr
+	float chartAtr = ta.atr(atrPeriod)[1]
+	f_capture_structure_zones(
+	  candidates, zones, candidateAtr, marketStructurePivotStrength, activeZoneMaxAgeHours,
+	  latestHigh[1], latestLow[1], state.direction)
+	f_update_market_structure(
+	  state, candidates, rawStructure, marketStructurePivotStrength, structureBreakBufferAtr,
+	  structureMaxWaitBars, latestHigh[1], latestLow[1], chartAtr, true)
+	int chartCount = f_collect_chart_pivots(evidence, atrPeriod, pivotStrength, maxEvidenceCount)
+	bool collect1m = enable1m and timeframe.isminutes and timeframe.multiplier == 1
+	int mtfCount = f_collect_mtf_pivots(
+	  evidence, collect1m, enable15m, enable1h, enable4h, enableDaily, atrPeriod, pivotStrength, maxEvidenceCount)
+	int newCount = chartCount + mtfCount
+	if newCount > 0 and not na(atr)
+		int firstNewIndex = math.max(0, array.size(evidence) - newCount)
+		for evidenceIndex = firstNewIndex to array.size(evidence) - 1
+			PivotEvidence pivot = array.get(evidence, evidenceIndex)
+			f_ingest_evidence(
+			  zones, pivot, atr, clusterToleranceAtr, adjacentMergeDistanceAtr, minimumZoneWidthAtr, maximumZoneWidthAtr,
+			  weight1m, weight15m, weight1h, weight4h, weightDaily, reactionBonus, volumeBonus, decayHours, maxZoneCount)
+	if not na(atr)
+		f_update_zone_states(zones, atr, invalidationBufferAtr, activeZoneMaxAgeHours, invalidatedRetentionHours)
+	int direction = state.direction
+	direction[1]

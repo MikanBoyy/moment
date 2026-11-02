@@ -1,9 +1,11 @@
+// evaluationTime に有効な zones から、direction の進行方向で referencePrice に最も近い対向境界を返す。
+// activeZoneMaxAgeHours はゾーン寿命。該当する境界がなければ na。
 f_find_profit_target(zones, int direction, float referencePrice, int evaluationTime, int activeZoneMaxAgeHours) =>
     float target = na
     if array.size(zones) > 0
         for zoneIndex = 0 to array.size(zones) - 1
             LiquidityZone zone = array.get(zones, zoneIndex)
-            bool active = zone.state == ZONE_STATE_ACTIVE and evaluationTime - zone.createdTime < activeZoneMaxAgeHours * 3600000
+            bool active = f_is_zone_active_at(zone, evaluationTime, activeZoneMaxAgeHours)
             bool opposingRole = zone.role == ZONE_ROLE_NEUTRAL or (direction == ZONE_ROLE_SUPPORT ? zone.role == ZONE_ROLE_RESISTANCE : zone.role == ZONE_ROLE_SUPPORT)
             float boundary = direction == ZONE_ROLE_SUPPORT ? zone.bottomPrice : zone.topPrice
             bool ahead = direction == ZONE_ROLE_SUPPORT ? boundary > referencePrice : boundary < referencePrice

@@ -1,9 +1,9 @@
 color structureBarColor = colorStructureBars and supportedSignalChart ? (structureState.direction == 1 ? structureBullishBarColor : structureState.direction == -1 ? structureBearishBarColor : structureNeutralBarColor) : na
 barcolor(structureBarColor, title = "市場構造のバー色")
 
-var table marketStructureTable = table.new(position.top_left, 2, 8, bgcolor = color.black, frame_color = color.gray, frame_width = 1)
+var table marketStructureTable = table.new(position.top_left, 2, 9, bgcolor = color.black, frame_color = color.gray, frame_width = 1)
 if barstate.islast
-    table.clear(marketStructureTable, 0, 0, 1, 7)
+    table.clear(marketStructureTable, 0, 0, 1, 8)
     if showMarketStructure
         bool hasProtectedZone = not na(structureState.protectedZone)
         float fallbackReference = structureState.direction == 1 ? structureLatestLow[1] : structureState.direction == -1 ? structureLatestHigh[1] : na
@@ -33,3 +33,6 @@ if barstate.islast
         table.cell(marketStructureTable, 1, 6, structurePosition.direction == 1 ? "BUY" : structurePosition.direction == -1 ? "SELL" : "なし", text_color = color.white)
         table.cell(marketStructureTable, 0, 7, "構造対向帯参考", text_color = color.white)
         table.cell(marketStructureTable, 1, 7, structurePosition.direction == 0 ? "-" : na(structurePosition.opposingZonePrice) ? "対向帯なし" : str.tostring(structurePosition.opposingZonePrice, format.mintick), text_color = color.white)
+        string higherStructureText = not enableStructureHtfFilter ? "無効" : not validHigherStructureTimeframe ? "利用不可" : higherStructureTimeframe + " / " + (higherStructureDirection == 1 ? "上昇" : higherStructureDirection == -1 ? "下降" : "判定待ち")
+        table.cell(marketStructureTable, 0, 8, "構造用上位足", text_color = color.white)
+        table.cell(marketStructureTable, 1, 8, higherStructureText, text_color = color.white)

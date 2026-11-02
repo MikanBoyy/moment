@@ -1,22 +1,28 @@
+// zone の価格範囲を表示用文字列に変換する。ゾーンがなければ RSIのみ と返す。
 f_signal_zone_text(SignalZoneCandidate zone) =>
     na(zone) ? "RSIのみ" : str.tostring(zone.bottomPrice, format.mintick) + " - " + str.tostring(zone.topPrice, format.mintick)
 
+// zone の役割・スコア・時間足マスクを表示用文字列に変換する。ゾーンがなければハイフンを返す。
 f_signal_zone_evidence(SignalZoneCandidate zone) =>
     na(zone) ? "-" : str.tostring(zone.role) + " / " + str.tostring(zone.score, "#.00") + " / " + str.tostring(zone.timeframeMask)
 
+// 現在終値から zone のピボットまでの距離を候補のATR単位で返す。ゾーンがなければハイフン。
 f_signal_pivot_distance(SignalZoneCandidate zone) =>
     na(zone) ? "-" : str.tostring(math.abs(close - zone.pivotPrice) / zone.atr, "#.00") + " ATR"
 
+// 現在終値から zone の範囲までの最短距離を候補のATR単位で返す。ゾーンがなければハイフン。
 f_signal_zone_distance(SignalZoneCandidate zone) =>
     na(zone) ? "-" : str.tostring(math.max(0.0, math.max(zone.bottomPrice - close, close - zone.topPrice)) / zone.atr, "#.00") + " ATR"
 
+// grossProfit と grossLoss から表示用PFを返す。損失なしや取引なしも区別する。
 f_profit_factor_text(float grossProfit, float grossLoss) =>
     grossLoss > 0 ? str.tostring(grossProfit / grossLoss, "#.00") : grossProfit > 0 ? "損失なし" : "-"
 
+// winCount と closedCount から件数付きの表示用勝率を返す。終了取引がなければハイフン。
 f_win_rate_text(int winCount, int closedCount) =>
     closedCount > 0 ? str.tostring(100.0 * winCount / closedCount, "#.0") + "% (" + str.tostring(winCount) + "/" + str.tostring(closedCount) + ")" : "- (0件)"
 
-var table signalDiagnostics = table.new(position.bottom_left, 2, 19, bgcolor = color.black, frame_color = color.gray, frame_width = 1)
+var table signalDiagnostics = table.new(position.bottom_left, 2, 20, bgcolor = color.black, frame_color = color.gray, frame_width = 1)
 var string lastSignalDirection = "-"
 var string lastSignalTime = "-"
 var string lastSignalZone = "-"
@@ -46,9 +52,9 @@ if finalBullishSignal or finalBearishSignal
         lastSignalDistance := "B: " + lastSignalDistance + " / S: " + f_signal_pivot_distance(bearishZone)
         lastSignalZoneDistance := "B: " + lastSignalZoneDistance + " / S: " + f_signal_zone_distance(bearishZone)
 if barstate.islast
-    string signalStatus = not enableDivSignals ? "無効" : not supportedSignalChart ? "通常の時間足のみ" : not validSignalSettings ? "ピボット間隔の設定が不正" : requireZoneMatch and requireHigherTfEvidence and not hasHtfSource ? "1時間足以上の証拠が無効" : not requireZoneMatch and enableExitSignals ? "RSI単独: 撤退判定なし" : "有効"
-    bool showTable = showSignalDiagnostics or (enableDivSignals and (not supportedSignalChart or not validSignalSettings or (requireZoneMatch and requireHigherTfEvidence and not hasHtfSource)))
-    table.clear(signalDiagnostics, 0, 0, 1, 18)
+    string signalStatus = not enableDivSignals ? "無効" : not supportedSignalChart ? "通常の時間足のみ" : not validSignalSettings ? "ピボット間隔の設定が不正" : enableHtfStructureFilter and not validHigherStructureTimeframe ? "上位足が利用不可" : requireZoneMatch and requireHigherTfEvidence and not hasHtfSource ? "1時間足以上の証拠が無効" : not requireZoneMatch and enableExitSignals ? "RSI単独: 撤退判定なし" : "有効"
+    bool showTable = showSignalDiagnostics or (enableDivSignals and (not supportedSignalChart or not validSignalSettings or (enableHtfStructureFilter and not validHigherStructureTimeframe) or (requireZoneMatch and requireHigherTfEvidence and not hasHtfSource)))
+    table.clear(signalDiagnostics, 0, 0, 1, 19)
     if showTable
         string profitFactorText = f_profit_factor_text(simulatedGrossProfit, simulatedGrossLoss)
         string winRateText = f_win_rate_text(simulatedWinCount, simulatedClosedCount)
@@ -84,6 +90,9 @@ if barstate.islast
         table.cell(signalDiagnostics, 1, 10, totalProfitFactorText, text_color = color.white)
         table.cell(signalDiagnostics, 0, 11, "合算 仮想勝率", text_color = color.white)
         table.cell(signalDiagnostics, 1, 11, totalWinRateText, text_color = color.white)
+        string higherStructureText = not enableHtfStructureFilter and not enableStructureHtfFilter ? "無効" : not validHigherStructureTimeframe ? "利用不可" : higherStructureTimeframe + " / " + (higherStructureDirection == 1 ? "上昇" : higherStructureDirection == -1 ? "下降" : "判定待ち")
+        table.cell(signalDiagnostics, 0, 19, "上位足構造", text_color = color.white)
+        table.cell(signalDiagnostics, 1, 19, higherStructureText, text_color = color.white)
         if showSignalDetails
             table.cell(signalDiagnostics, 0, 12, "P / C", text_color = color.white)
             table.cell(signalDiagnostics, 1, 12, lastSignalTime, text_color = color.white)
