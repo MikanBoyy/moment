@@ -63,8 +63,10 @@ float exitBufferAtr = input.float(0.35, "撤退判定の余裕幅 (15分ATR)", m
 int exitConfirmationBars = input.int(2, "撤退判定の連続確定バー数", minval = 1, maxval = 5, group = GROUP_DIV)
 
 bool showMarketStructure = input.bool(true, "市場構造を表示", group = GROUP_STRUCTURE)
-bool showStructureSignals = input.bool(true, "市場構造の売買サインを表示", group = GROUP_STRUCTURE, tooltip = "反転・利確・撤退サインとエントリー時の対向帯参考線の表示を切り替えます。追跡とアラートには影響しません。")
-bool enableStructureHtfFilter = input.bool(true, "構造エントリーに上位足市場構造を適用", group = GROUP_STRUCTURE, tooltip = "直近確定済みの上位足が上昇なら構造BUY、下降なら構造SELLを許可します。判定保留・取得不可では見送り、保有中の終了判定には適用しません。")
+bool showStructureSignals = input.bool(true, "市場構造の売買サインを表示", group = GROUP_STRUCTURE, tooltip = "反転・利確・撤退・追加サインとエントリー時の対向帯参考線の表示を切り替えます。追跡とアラートには影響しません。")
+bool enableStructureHtfFilter = input.bool(true, "構造エントリーに上位足市場構造を適用", group = GROUP_STRUCTURE, tooltip = "直近確定済みの上位足が上昇なら構造BUY、下降なら構造SELLの新規・追加を許可します。判定保留・取得不可では見送り、保有中の終了判定には適用しません。")
+bool enableStructureAddSignals = input.bool(true, "構造の追加サインを有効化", group = GROUP_STRUCTURE, tooltip = "保有中にエントリー後の押し目・戻りが基準帯として認定された場合、初回価格との比較で追加候補を表示します。数量や仮想成績には反映しません。")
+int maxStructureAddSignals = input.int(3, "構造の追加サイン上限", minval = 1, maxval = 20, group = GROUP_STRUCTURE, tooltip = "1回の構造ポジション追跡中に発生するナンピンとピラミッディングの合計上限です。")
 bool colorStructureBars = input.bool(true, "市場構造でバーを着色", group = GROUP_STRUCTURE, tooltip = "確定済みの市場構造に応じて着色します。終了候補・判定保留は中立色です。")
 color structureBullishBarColor = input.color(#26A69A, "上昇構造のバー色", group = GROUP_STRUCTURE)
 color structureBearishBarColor = input.color(#EF5350, "下降構造のバー色", group = GROUP_STRUCTURE)

@@ -41,6 +41,8 @@ type StructurePositionState
     int direction
     float opposingZonePrice
     float entryPrice
+    int entryBar
+    int addCount
 
 type StructureZoneCandidate
     int pivotBar

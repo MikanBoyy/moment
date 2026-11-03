@@ -29,7 +29,7 @@ var array<SignalZoneCandidate> signalZoneCandidates = array.new<SignalZoneCandid
 var array<StructureZoneCandidate> structureZoneCandidates = array.new<StructureZoneCandidate>()
 var MarketStructureState structureState = MarketStructureState.new(0, 0, 0, false, na, na, false)
 var SignalPositionState signalPosition = SignalPositionState.new(ZONE_ROLE_NEUTRAL, na, na, 0, na)
-var StructurePositionState structurePosition = StructurePositionState.new(0, na, na)
+var StructurePositionState structurePosition = StructurePositionState.new(0, na, na, na, 0)
 var int lastEstablishedStructureDirection = 0
 
 bool supportedSignalChart = chart.is_standard and
@@ -61,10 +61,13 @@ if barstate.isconfirmed and supportedSignalChart
 	f_capture_structure_zones(
 	  structureZoneCandidates, liquidityZones, signalAtr, marketStructurePivotStrength, activeZoneMaxAgeHours,
 	  structureLatestHigh[1], structureLatestLow[1], structureState.direction)
+int previousProtectedPivotBar = na(structureState.protectedZone) ? na : structureState.protectedZone.pivotBar
 f_update_market_structure(
   structureState, structureZoneCandidates, supportedSignalChart ? marketStructure : 0, marketStructurePivotStrength,
   structureBreakBufferAtr, structureMaxWaitBars, structureLatestHigh[1], structureLatestLow[1],
   previousStructureChartAtr, barstate.isconfirmed)
+bool structureZonePromoted = barstate.isconfirmed and not na(structureState.protectedZone) and
+	  (na(previousProtectedPivotBar) or structureState.protectedZone.pivotBar != previousProtectedPivotBar)
 bool structureBuySignal = false
 bool structureSellSignal = false
 if barstate.isconfirmed and supportedSignalChart and structureState.direction != 0
@@ -107,9 +110,13 @@ if newEvidenceCount > 0 and not na(commonAtr)
 if not na(commonAtr)
 	f_update_zone_states(liquidityZones, commonAtr, invalidationBufferAtr, activeZoneMaxAgeHours, invalidatedRetentionHours)
 int previousStructurePositionDirection = structurePosition.direction
-[structureExitBuy, structureExitSell, structureProfitBuy, structureProfitSell] = f_update_structure_position(
+[structureExitBuy, structureExitSell, structureProfitBuy, structureProfitSell,
+	structureAverageDownBuy, structureAverageDownSell, structurePyramidBuy, structurePyramidSell] = f_update_structure_position(
 	structurePosition, structureState.direction, filteredStructureBuySignal, filteredStructureSellSignal,
-	liquidityZones, activeZoneMaxAgeHours)
+	liquidityZones, activeZoneMaxAgeHours, structureZonePromoted,
+	na(structureState.protectedZone) ? na : structureState.protectedZone.pivotBar, enableStructureAddSignals,
+	not enableStructureHtfFilter or higherStructureDirection == 1,
+	not enableStructureHtfFilter or higherStructureDirection == -1, maxStructureAddSignals)
 [finalBullishSignal, finalBearishSignal, exitBullishSignal, exitBearishSignal,
 	profitBullishSignal, profitBearishSignal, reverseBullishSignal, reverseBearishSignal,
 	averageDownBullishSignal, averageDownBearishSignal, pyramidBullishSignal, pyramidBearishSignal] =

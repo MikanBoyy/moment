@@ -1,13 +1,18 @@
 // 確定足で構造ポジション state の新規追跡と構造終了を処理する。
 // structureDirection は終了判定、buySignal/sellSignal は入口、zones と activeZoneMaxAgeHours は対向境界の記録用。
-// 戻り値: [買い損失終了、売り損失終了、買い利益終了、売り利益終了]。終了足では新規追跡しない。
+// 基準帯の認定と上位足の許可により追加候補を判定する。終了足では追加・新規追跡しない。
 f_update_structure_position(
     StructurePositionState state, int structureDirection, bool buySignal, bool sellSignal, zones,
-    int activeZoneMaxAgeHours) =>
+    int activeZoneMaxAgeHours, bool zonePromoted, int promotedPivotBar, bool enableAddSignals,
+    bool allowBuyAdd, bool allowSellAdd, int maxAddSignals) =>
     bool exitBuy = false
     bool exitSell = false
     bool profitBuy = false
     bool profitSell = false
+    bool averageDownBuy = false
+    bool averageDownSell = false
+    bool pyramidBuy = false
+    bool pyramidSell = false
     if barstate.isconfirmed
         int previousDirection = state.direction
         if previousDirection != 0
@@ -21,9 +26,22 @@ f_update_structure_position(
                 state.direction := 0
                 state.opposingZonePrice := na
                 state.entryPrice := na
+                state.entryBar := na
+                state.addCount := 0
+            else if enableAddSignals and zonePromoted and not na(promotedPivotBar) and not na(state.entryBar) and promotedPivotBar > state.entryBar and state.addCount < maxAddSignals and not na(state.entryPrice) and (previousDirection == 1 ? allowBuyAdd : allowSellAdd)
+                bool favorable = previousDirection == 1 ? close > state.entryPrice : close < state.entryPrice
+                bool unfavorable = previousDirection == 1 ? close < state.entryPrice : close > state.entryPrice
+                averageDownBuy := unfavorable and previousDirection == 1
+                averageDownSell := unfavorable and previousDirection == -1
+                pyramidBuy := favorable and previousDirection == 1
+                pyramidSell := favorable and previousDirection == -1
+                if favorable or unfavorable
+                    state.addCount := state.addCount + 1
         else if buySignal != sellSignal
             state.direction := buySignal ? 1 : -1
             state.entryPrice := close
+            state.entryBar := bar_index
+            state.addCount := 0
             int zoneDirection = buySignal ? ZONE_ROLE_SUPPORT : ZONE_ROLE_RESISTANCE
             state.opposingZonePrice := f_find_profit_target(zones, zoneDirection, close, time, activeZoneMaxAgeHours)
-    [exitBuy, exitSell, profitBuy, profitSell]
+    [exitBuy, exitSell, profitBuy, profitSell, averageDownBuy, averageDownSell, pyramidBuy, pyramidSell]
